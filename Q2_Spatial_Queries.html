@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Q2 - Spatial Queries</title>
+</head>
+<body>
+    <pre style="font-size:3px;">from qgis.core import *
+from qgis.gui import *
+from PyQt5.QtGui import QColor
+from PyQt5.QtCore import QVariant
+
+project = QgsProject.instance()
+
+gardens_list    = project.mapLayersByName(&quot;Gardens&quot;)
+highways_list   = project.mapLayersByName(&quot;Highways&quot;)
+railways_list   = project.mapLayersByName(&quot;Railway_Tracks&quot;)
+restaurants_list = project.mapLayersByName(&quot;Restaurants&quot;)
+
+if not gardens_list or not highways_list or not railways_list or not restaurants_list:
+    print(&quot;ERROR: Please run Q1_Create_Map.py first to create all layers!&quot;)
+    raise Exception(&quot;Required layers not found. Run Q1 first.&quot;)
+
+gardens     = gardens_list[0]
+highways    = highways_list[0]
+railways    = railways_list[0]
+restaurants = restaurants_list[0]
+
+print(&quot;=&quot; * 65)
+print(&quot;  Q2: Spatial Queries - RESULTS&quot;)
+print(&quot;=&quot; * 65)
+
+print(&quot;\n&quot; + &quot;-&quot; * 65)
+print(&quot;  Q2.1: Add Garden_area column &amp; Calculate Area of Each Garden&quot;)
+print(&quot;-&quot; * 65)
+
+field_names = [field.name() for field in gardens.fields()]
+if &quot;Garden_area&quot; not in field_names:
+    gardens.startEditing()
+    gardens.dataProvider().addAttributes([QgsField(&quot;Garden_area&quot;, QVariant.Double)])
+    gardens.updateFields()
+    gardens.commitChanges()
+
+d = QgsDistanceArea()
+d.setEllipsoid(&#x27;WGS84&#x27;)
+d.setSourceCrs(gardens.crs(), project.transformContext())
+
+gardens.startEditing()
+area_idx = gardens.fields().indexOf(&quot;Garden_area&quot;)
+
+for feat in gardens.getFeatures():
+    area = d.measureArea(feat.geometry())
+    area_sq_m = d.convertAreaMeasurement(area, QgsUnitTypes.AreaSquareMeters)
+    gardens.changeAttributeValue(feat.id(), area_idx, round(area_sq_m, 2))
+    print(f&quot;  Garden ID {feat[&#x27;id&#x27;]}: {feat[&#x27;name&#x27;]:20s} -&gt; Area = {round(area_sq_m, 2):&gt;12.2f} sq meters&quot;)
+
+gardens.commitChanges()
+print(&quot;  [Garden_area column added and populated successfully]&quot;)
+
+print(&quot;\n&quot; + &quot;-&quot; * 65)
+print(&quot;  Q2.2: Show the Largest Garden&quot;)
+print(&quot;-&quot; * 65)
+
+max_area = 0
+largest_garden_name = &quot;&quot;
+largest_garden_id = None
+
+for feat in gardens.getFeatures():
+    if feat[&#x27;Garden_area&#x27;] and feat[&#x27;Garden_area&#x27;] &gt; max_area:
+        max_area = feat[&#x27;Garden_area&#x27;]
+        largest_garden_name = feat[&#x27;name&#x27;]
+        largest_garden_id = feat.id()
+
+print(f&quot;  LARGEST GARDEN: {largest_garden_name}&quot;)
+print(f&quot;  Area: {max_area:.2f} sq meters&quot;)
+
+gardens.removeSelection()
+gardens.select(largest_garden_id)
+iface.setActiveLayer(gardens)
+iface.mapCanvas().refresh()
+print(&quot;  [Largest garden is now SELECTED/HIGHLIGHTED on the map]&quot;)
+
+print(&quot;\n&quot; + &quot;-&quot; * 65)
+print(&quot;  Q2.3: Railway Tracks that INTERSECT with Highways&quot;)
+print(&quot;-&quot; * 65)
+
+highway_geoms = []
+highway_names = []
+for feat in highways.getFeatures():
+    highway_geoms.append(feat.geometry())
+    highway_names.append(feat[&#x27;name&#x27;])
+
+intersecting_track_ids = []
+for track_feat in railways.getFeatures():
+    track_geom = track_feat.geometry()
+    for i, hw_geom in enumerate(highway_geoms):
+        if track_geom.intersects(hw_geom):
+            intersecting_track_ids.append(track_feat.id())
+            print(f&quot;  INTERSECTS: &#x27;{track_feat[&#x27;name&#x27;]}&#x27; intersects &#x27;{highway_names[i]}&#x27;&quot;)
+
+if not intersecting_track_ids:
+    print(&quot;  No intersecting railway tracks found.&quot;)
+else:
+
+    railways.removeSelection()
+    railways.select(intersecting_track_ids)
+    print(f&quot;\n  [Total: {len(set(intersecting_track_ids))} track(s) intersect with highways]&quot;)
+    print(&quot;  [Intersecting tracks are now SELECTED/HIGHLIGHTED on the map]&quot;)
+
+print(&quot;\n&quot; + &quot;-&quot; * 65)
+print(&quot;  Q2.4: Restaurants INSIDE Gardens&quot;)
+print(&quot;-&quot; * 65)
+
+garden_data = []
+for feat in gardens.getFeatures():
+    garden_data.append((feat[&#x27;name&#x27;], feat.geometry()))
+
+restaurant_inside_ids = []
+for rest_feat in restaurants.getFeatures():
+    rest_geom = rest_feat.geometry()
+    for garden_name, garden_geom in garden_data:
+        if garden_geom.contains(rest_geom):
+            restaurant_inside_ids.append(rest_feat.id())
+            print(f&quot;  INSIDE: &#x27;{rest_feat[&#x27;name&#x27;]}&#x27; is inside &#x27;{garden_name}&#x27;&quot;)
+
+if not restaurant_inside_ids:
+    print(&quot;  No restaurants found inside gardens.&quot;)
+else:
+
+    restaurants.removeSelection()
+    restaurants.select(restaurant_inside_ids)
+    print(f&quot;\n  [Total: {len(restaurant_inside_ids)} restaurant(s) found inside gardens]&quot;)
+    print(&quot;  [Restaurants inside gardens are now SELECTED/HIGHLIGHTED on the map]&quot;)
+
+print(&quot;\n&quot; + &quot;-&quot; * 65)
+print(&quot;  Q2.5: Railway Tracks that DO NOT Intersect with Highways&quot;)
+print(&quot;-&quot; * 65)
+
+non_intersecting_ids = []
+for track_feat in railways.getFeatures():
+    track_geom = track_feat.geometry()
+    intersects_any = False
+    for hw_geom in highway_geoms:
+        if track_geom.intersects(hw_geom):
+            intersects_any = True
+            break
+    if not intersects_any:
+        non_intersecting_ids.append(track_feat.id())
+        print(f&quot;  NO INTERSECTION: &#x27;{track_feat[&#x27;name&#x27;]}&#x27; does NOT intersect any highway&quot;)
+
+if not non_intersecting_ids:
+    print(&quot;  All railway tracks intersect with at least one highway.&quot;)
+else:
+
+    railways.removeSelection()
+    railways.select(non_intersecting_ids)
+    print(f&quot;\n  [Total: {len(non_intersecting_ids)} track(s) do not intersect any highway]&quot;)
+    print(&quot;  [Non-intersecting tracks are now SELECTED/HIGHLIGHTED on the map]&quot;)
+
+print(&quot;\n&quot; + &quot;=&quot; * 65)
+print(&quot;  Q2: ALL QUERIES EXECUTED SUCCESSFULLY!&quot;)
+print(&quot;=&quot; * 65)
+print(\
+   )
+print(&quot;=&quot; * 65)
+
+iface.mapCanvas().refresh()
+</pre>
+</body>
+</html>

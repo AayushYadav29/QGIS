@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Q3 - Create Farm Map</title>
+</head>
+<body>
+    <pre style="font-size:3px;">from qgis.core import *
+from qgis.gui import *
+from PyQt5.QtGui import QColor
+from PyQt5.QtCore import QVariant
+
+project = QgsProject.instance()
+project.setTitle(&quot;GIS Practical - Farm / Village Map&quot;)
+
+highway_layer = QgsVectorLayer(&quot;LineString?crs=EPSG:4326&quot;, &quot;Highway&quot;, &quot;memory&quot;)
+highway_provider = highway_layer.dataProvider()
+highway_provider.addAttributes([
+    QgsField(&quot;id&quot;, QVariant.String)
+])
+highway_layer.updateFields()
+
+feat = QgsFeature()
+points = [QgsPointXY(73.70, 18.50), QgsPointXY(73.70, 18.62)]
+feat.setGeometry(QgsGeometry.fromPolylineXY(points))
+feat.setAttributes([&quot;375&quot;])
+highway_provider.addFeature(feat)
+
+highway_layer.updateExtents()
+project.addMapLayer(highway_layer)
+
+symbol = QgsLineSymbol.createSimple({
+    &#x27;color&#x27;: &#x27;220,30,30&#x27;,
+    &#x27;width&#x27;: &#x27;1.5&#x27;
+})
+highway_layer.renderer().setSymbol(symbol)
+highway_layer.triggerRepaint()
+
+farm_layer = QgsVectorLayer(&quot;Polygon?crs=EPSG:4326&quot;, &quot;Farms&quot;, &quot;memory&quot;)
+farm_provider = farm_layer.dataProvider()
+farm_provider.addAttributes([
+    QgsField(&quot;id&quot;, QVariant.Int),
+    QgsField(&quot;own_name&quot;, QVariant.String)
+])
+farm_layer.updateFields()
+
+farms_data = [
+
+    (1, &quot;Ramesh Patil&quot;,   [(73.695,18.53),(73.710,18.53),(73.710,18.55),(73.695,18.55),(73.695,18.53)]),
+    (2, &quot;Sunil Jadhav&quot;,   [(73.695,18.56),(73.710,18.56),(73.710,18.58),(73.695,18.58),(73.695,18.56)]),
+
+    (3, &quot;Manoj Shinde&quot;,   [(73.72,18.52),(73.735,18.52),(73.735,18.54),(73.72,18.54),(73.72,18.52)]),
+    (4, &quot;Anil Deshmukh&quot;,  [(73.72,18.55),(73.735,18.55),(73.735,18.57),(73.72,18.57),(73.72,18.55)]),
+    (5, &quot;Vijay More&quot;,     [(73.74,18.53),(73.755,18.53),(73.755,18.55),(73.74,18.55),(73.74,18.53)]),
+    (6, &quot;Pramod Kulkarni&quot;,[(73.74,18.56),(73.755,18.56),(73.755,18.58),(73.74,18.58),(73.74,18.56)])
+]
+
+for fid, name, coords in farms_data:
+    feat = QgsFeature()
+    points = [QgsPointXY(x, y) for x, y in coords]
+    feat.setGeometry(QgsGeometry.fromPolygonXY([points]))
+    feat.setAttributes([fid, name])
+    farm_provider.addFeature(feat)
+
+farm_layer.updateExtents()
+project.addMapLayer(farm_layer)
+
+symbol = QgsFillSymbol.createSimple({
+    &#x27;color&#x27;: &#x27;144,238,144,100&#x27;,
+    &#x27;outline_color&#x27;: &#x27;0,100,0&#x27;,
+    &#x27;outline_width&#x27;: &#x27;0.5&#x27;
+})
+farm_layer.renderer().setSymbol(symbol)
+farm_layer.triggerRepaint()
+
+path_layer = QgsVectorLayer(&quot;LineString?crs=EPSG:4326&quot;, &quot;Paths&quot;, &quot;memory&quot;)
+path_provider = path_layer.dataProvider()
+path_provider.addAttributes([
+    QgsField(&quot;id&quot;, QVariant.Int)
+])
+path_layer.updateFields()
+
+paths_data = [
+
+    (1, [(73.710,18.54),(73.72,18.53)]),
+
+    (2, [(73.710,18.57),(73.72,18.56)]),
+
+    (3, [(73.735,18.53),(73.74,18.54)]),
+
+    (4, [(73.735,18.56),(73.74,18.57)])
+]
+
+for pid, coords in paths_data:
+    feat = QgsFeature()
+    points = [QgsPointXY(x, y) for x, y in coords]
+    feat.setGeometry(QgsGeometry.fromPolylineXY(points))
+    feat.setAttributes([pid])
+    path_provider.addFeature(feat)
+
+path_layer.updateExtents()
+project.addMapLayer(path_layer)
+
+symbol = QgsLineSymbol.createSimple({
+    &#x27;color&#x27;: &#x27;139,90,43&#x27;,
+    &#x27;width&#x27;: &#x27;0.5&#x27;,
+    &#x27;line_style&#x27;: &#x27;dash&#x27;
+})
+path_layer.renderer().setSymbol(symbol)
+path_layer.triggerRepaint()
+
+main_road_layer = QgsVectorLayer(&quot;LineString?crs=EPSG:4326&quot;, &quot;Main_Road&quot;, &quot;memory&quot;)
+main_road_provider = main_road_layer.dataProvider()
+main_road_provider.addAttributes([
+    QgsField(&quot;id&quot;, QVariant.Int),
+    QgsField(&quot;name&quot;, QVariant.String)
+])
+main_road_layer.updateFields()
+
+feat = QgsFeature()
+points = [QgsPointXY(73.70, 18.545), QgsPointXY(73.76, 18.545)]
+feat.setGeometry(QgsGeometry.fromPolylineXY(points))
+feat.setAttributes([1, &quot;Village Main Road&quot;])
+main_road_provider.addFeature(feat)
+
+main_road_layer.updateExtents()
+project.addMapLayer(main_road_layer)
+
+symbol = QgsLineSymbol.createSimple({
+    &#x27;color&#x27;: &#x27;60,60,60&#x27;,
+    &#x27;width&#x27;: &#x27;1.0&#x27;
+})
+main_road_layer.renderer().setSymbol(symbol)
+main_road_layer.triggerRepaint()
+
+farmhouse_layer = QgsVectorLayer(&quot;Point?crs=EPSG:4326&quot;, &quot;Farm_Houses&quot;, &quot;memory&quot;)
+farmhouse_provider = farmhouse_layer.dataProvider()
+farmhouse_provider.addAttributes([
+    QgsField(&quot;id&quot;, QVariant.Int),
+    QgsField(&quot;frm_id&quot;, QVariant.Int)
+])
+farmhouse_layer.updateFields()
+
+farmhouses_data = [
+    (1, 1, 73.702, 18.54),
+    (2, 3, 73.727, 18.53)
+]
+
+for fhid, frm_id, x, y in farmhouses_data:
+    feat = QgsFeature()
+    feat.setGeometry(QgsGeometry.fromPointXY(QgsPointXY(x, y)))
+    feat.setAttributes([fhid, frm_id])
+    farmhouse_provider.addFeature(feat)
+
+farmhouse_layer.updateExtents()
+project.addMapLayer(farmhouse_layer)
+
+symbol = QgsMarkerSymbol.createSimple({
+    &#x27;name&#x27;: &#x27;pentagon&#x27;,
+    &#x27;color&#x27;: &#x27;160,82,45&#x27;,
+    &#x27;size&#x27;: &#x27;4.5&#x27;,
+    &#x27;outline_color&#x27;: &#x27;100,50,20&#x27;,
+    &#x27;outline_width&#x27;: &#x27;0.4&#x27;
+})
+farmhouse_layer.renderer().setSymbol(symbol)
+farmhouse_layer.triggerRepaint()
+
+residential_layer = QgsVectorLayer(&quot;Polygon?crs=EPSG:4326&quot;, &quot;Residential_Areas&quot;, &quot;memory&quot;)
+residential_provider = residential_layer.dataProvider()
+residential_provider.addAttributes([
+    QgsField(&quot;id&quot;, QVariant.Int),
+    QgsField(&quot;name&quot;, QVariant.String)
+])
+residential_layer.updateFields()
+
+residential_data = [
+
+    (1, &quot;Shivaji Nagar&quot;,   [(73.695,18.505),(73.710,18.505),(73.710,18.52),(73.695,18.52),(73.695,18.505)]),
+
+    (2, &quot;Gandhi Chowk&quot;,    [(73.72,18.585),(73.735,18.585),(73.735,18.60),(73.72,18.60),(73.72,18.585)]),
+
+    (3, &quot;Nehru Colony&quot;,    [(73.74,18.505),(73.755,18.505),(73.755,18.52),(73.74,18.52),(73.74,18.505)]),
+
+    (4, &quot;Ambedkar Nagar&quot;,  [(73.695,18.59),(73.710,18.59),(73.710,18.605),(73.695,18.605),(73.695,18.59)])
+]
+
+for rid, name, coords in residential_data:
+    feat = QgsFeature()
+    points = [QgsPointXY(x, y) for x, y in coords]
+    feat.setGeometry(QgsGeometry.fromPolygonXY([points]))
+    feat.setAttributes([rid, name])
+    residential_provider.addFeature(feat)
+
+residential_layer.updateExtents()
+project.addMapLayer(residential_layer)
+
+symbol = QgsFillSymbol.createSimple({
+    &#x27;color&#x27;: &#x27;200,180,230,100&#x27;,
+    &#x27;outline_color&#x27;: &#x27;100,50,150&#x27;,
+    &#x27;outline_width&#x27;: &#x27;0.4&#x27;
+})
+residential_layer.renderer().setSymbol(symbol)
+residential_layer.triggerRepaint()
+
+school_layer = QgsVectorLayer(&quot;Point?crs=EPSG:4326&quot;, &quot;Primary_Schools&quot;, &quot;memory&quot;)
+school_provider = school_layer.dataProvider()
+school_provider.addAttributes([
+    QgsField(&quot;id&quot;, QVariant.Int),
+    QgsField(&quot;name&quot;, QVariant.String)
+])
+school_layer.updateFields()
+
+schools_data = [
+    (1, &quot;Village Primary School&quot;,    73.715, 18.59),
+    (2, &quot;Nagar Primary School&quot;,      73.745, 18.515)
+]
+
+for sid, name, x, y in schools_data:
+    feat = QgsFeature()
+    feat.setGeometry(QgsGeometry.fromPointXY(QgsPointXY(x, y)))
+    feat.setAttributes([sid, name])
+    school_provider.addFeature(feat)
+
+school_layer.updateExtents()
+project.addMapLayer(school_layer)
+
+symbol = QgsMarkerSymbol.createSimple({
+    &#x27;name&#x27;: &#x27;triangle&#x27;,
+    &#x27;color&#x27;: &#x27;30,100,200&#x27;,
+    &#x27;size&#x27;: &#x27;4.5&#x27;,
+    &#x27;outline_color&#x27;: &#x27;0,50,150&#x27;,
+    &#x27;outline_width&#x27;: &#x27;0.4&#x27;
+})
+school_layer.renderer().setSymbol(symbol)
+school_layer.triggerRepaint()
+
+transport_layer = QgsVectorLayer(&quot;Point?crs=EPSG:4326&quot;, &quot;Transport_Stops&quot;, &quot;memory&quot;)
+transport_provider = transport_layer.dataProvider()
+transport_provider.addAttributes([
+    QgsField(&quot;id&quot;, QVariant.Int),
+    QgsField(&quot;name&quot;, QVariant.String),
+    QgsField(&quot;type&quot;, QVariant.String)
+])
+transport_layer.updateFields()
+
+transport_data = [
+    (1, &quot;Village Bus Stop&quot;,   &quot;Bus Stop&quot;,   73.725, 18.547),
+    (2, &quot;Village Auto Stand&quot;, &quot;Auto Stand&quot;, 73.745, 18.547)
+]
+
+for tid, name, ttype, x, y in transport_data:
+    feat = QgsFeature()
+    feat.setGeometry(QgsGeometry.fromPointXY(QgsPointXY(x, y)))
+    feat.setAttributes([tid, name, ttype])
+    transport_provider.addFeature(feat)
+
+transport_layer.updateExtents()
+project.addMapLayer(transport_layer)
+
+symbol = QgsMarkerSymbol.createSimple({
+    &#x27;name&#x27;: &#x27;square&#x27;,
+    &#x27;color&#x27;: &#x27;255,200,0&#x27;,
+    &#x27;size&#x27;: &#x27;4&#x27;,
+    &#x27;outline_color&#x27;: &#x27;180,130,0&#x27;,
+    &#x27;outline_width&#x27;: &#x27;0.4&#x27;
+})
+transport_layer.renderer().setSymbol(symbol)
+transport_layer.triggerRepaint()
+
+office_layer = QgsVectorLayer(&quot;Point?crs=EPSG:4326&quot;, &quot;Grampanchayat_Office&quot;, &quot;memory&quot;)
+office_provider = office_layer.dataProvider()
+office_provider.addAttributes([
+    QgsField(&quot;id&quot;, QVariant.Int),
+    QgsField(&quot;name&quot;, QVariant.String)
+])
+office_layer.updateFields()
+
+feat = QgsFeature()
+feat.setGeometry(QgsGeometry.fromPointXY(QgsPointXY(73.725, 18.555)))
+feat.setAttributes([1, &quot;Village Grampanchayat&quot;])
+office_provider.addFeature(feat)
+
+office_layer.updateExtents()
+project.addMapLayer(office_layer)
+
+symbol = QgsMarkerSymbol.createSimple({
+    &#x27;name&#x27;: &#x27;diamond&#x27;,
+    &#x27;color&#x27;: &#x27;180,0,0&#x27;,
+    &#x27;size&#x27;: &#x27;5&#x27;,
+    &#x27;outline_color&#x27;: &#x27;100,0,0&#x27;,
+    &#x27;outline_width&#x27;: &#x27;0.5&#x27;
+})
+office_layer.renderer().setSymbol(symbol)
+office_layer.triggerRepaint()
+
+well_layer = QgsVectorLayer(&quot;Point?crs=EPSG:4326&quot;, &quot;Wells&quot;, &quot;memory&quot;)
+well_provider = well_layer.dataProvider()
+well_provider.addAttributes([
+    QgsField(&quot;id&quot;, QVariant.Int),
+    QgsField(&quot;location&quot;, QVariant.String)
+])
+well_layer.updateFields()
+
+wells_data = [
+    (1, &quot;Farm 1&quot;,            73.700, 18.54),
+    (2, &quot;Farm 3&quot;,            73.728, 18.535),
+    (3, &quot;Farm 5&quot;,            73.748, 18.54),
+    (4, &quot;Shivaji Nagar&quot;,     73.702, 18.512)
+]
+
+for wid, loc, x, y in wells_data:
+    feat = QgsFeature()
+    feat.setGeometry(QgsGeometry.fromPointXY(QgsPointXY(x, y)))
+    feat.setAttributes([wid, loc])
+    well_provider.addFeature(feat)
+
+well_layer.updateExtents()
+project.addMapLayer(well_layer)
+
+symbol = QgsMarkerSymbol.createSimple({
+    &#x27;name&#x27;: &#x27;circle&#x27;,
+    &#x27;color&#x27;: &#x27;0,200,200&#x27;,
+    &#x27;size&#x27;: &#x27;4&#x27;,
+    &#x27;outline_color&#x27;: &#x27;0,100,100&#x27;,
+    &#x27;outline_width&#x27;: &#x27;0.5&#x27;
+})
+well_layer.renderer().setSymbol(symbol)
+well_layer.triggerRepaint()
+
+label_layers = [
+    (farm_layer, &quot;own_name&quot;),
+    (highway_layer, &quot;id&quot;),
+    (path_layer, &quot;id&quot;),
+    (main_road_layer, &quot;name&quot;),
+    (farmhouse_layer, &quot;id&quot;),
+    (residential_layer, &quot;name&quot;),
+    (school_layer, &quot;name&quot;),
+    (transport_layer, &quot;name&quot;),
+    (office_layer, &quot;name&quot;),
+    (well_layer, &quot;location&quot;)
+]
+
+for layer, field in label_layers:
+    settings = QgsPalLayerSettings()
+    settings.fieldName = field
+    settings.enabled = True
+    text_format = QgsTextFormat()
+    text_format.setSize(8)
+    buffer = QgsTextBufferSettings()
+    buffer.setEnabled(True)
+    buffer.setSize(1)
+    buffer.setColor(QColor(255, 255, 255))
+    text_format.setBuffer(buffer)
+    settings.setFormat(text_format)
+    labeling = QgsVectorLayerSimpleLabeling(settings)
+    layer.setLabelsEnabled(True)
+    layer.setLabeling(labeling)
+    layer.triggerRepaint()
+
+canvas = iface.mapCanvas()
+canvas.setExtent(farm_layer.extent())
+canvas.refresh()
+
+print(&quot;=&quot; * 65)
+print(&quot;  Q1: Farm / Village Map - CREATED SUCCESSFULLY!&quot;)
+print(&quot;=&quot; * 65)
+print(f&quot;  1.  Highway          : {highway_layer.featureCount()} feature  (Line, id=375)&quot;)
+print(f&quot;  2.  Farms            : {farm_layer.featureCount()} features (Polygon, 2 near highway)&quot;)
+print(f&quot;  3.  Paths            : {path_layer.featureCount()} features (Line, between farms)&quot;)
+print(f&quot;  4.  Main Road        : {main_road_layer.featureCount()} feature  (Line, touches highway)&quot;)
+print(f&quot;  5.  Farm Houses      : {farmhouse_layer.featureCount()} features (Point, inside farms)&quot;)
+print(f&quot;  6.  Residential Areas: {residential_layer.featureCount()} features (Polygon)&quot;)
+print(f&quot;  7.  Primary Schools  : {school_layer.featureCount()} features (Point)&quot;)
+print(f&quot;  8.  Transport Stops  : {transport_layer.featureCount()} features (Bus Stop + Auto Stand)&quot;)
+print(f&quot;  9.  Grampanchayat    : {office_layer.featureCount()} feature  (Point)&quot;)
+print(f&quot;  10. Wells            : {well_layer.featureCount()} features (3 in farms, 1 in residential)&quot;)
+print(&quot;=&quot; * 65)
+print(&quot;  CRS: EPSG:4326 (WGS 84)&quot;)
+print(&quot;=&quot; * 65)
+</pre>
+</body>
+</html>

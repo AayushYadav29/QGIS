@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Q5 - Railway CST Chembur Map</title>
+</head>
+<body>
+    <pre style="font-size:3px;">from qgis.core import *
+from qgis.gui import *
+from PyQt5.QtGui import QColor
+from PyQt5.QtCore import QVariant
+
+project = QgsProject.instance()
+project.setTitle(&quot;GIS Practical - Railway Route CST to Chembur (Harbour Line)&quot;)
+
+track_layer = QgsVectorLayer(&quot;LineString?crs=EPSG:4326&quot;, &quot;Railway_Track&quot;, &quot;memory&quot;)
+track_provider = track_layer.dataProvider()
+track_provider.addAttributes([
+    QgsField(&quot;id&quot;, QVariant.Int),
+    QgsField(&quot;name&quot;, QVariant.String),
+    QgsField(&quot;line&quot;, QVariant.String)
+])
+track_layer.updateFields()
+
+harbour_line_coords = [
+    (72.8353, 18.9398),
+    (72.8392, 18.9478),
+    (72.8420, 18.9538),
+    (72.8445, 18.9590),
+    (72.8470, 18.9640),
+    (72.8500, 18.9700),
+    (72.8540, 18.9770),
+    (72.8590, 18.9830),
+    (72.8650, 18.9880),
+    (72.8720, 18.9920),
+    (72.8790, 18.9960),
+    (72.8860, 19.0020),
+    (72.8940, 19.0070)
+]
+
+feat = QgsFeature()
+points = [QgsPointXY(x, y) for x, y in harbour_line_coords]
+feat.setGeometry(QgsGeometry.fromPolylineXY(points))
+feat.setAttributes([1, &quot;Harbour Line&quot;, &quot;Harbour&quot;])
+track_provider.addFeature(feat)
+
+track_layer.updateExtents()
+project.addMapLayer(track_layer)
+
+symbol = QgsLineSymbol.createSimple({
+    &#x27;color&#x27;: &#x27;80,80,80&#x27;,
+    &#x27;width&#x27;: &#x27;1.2&#x27;,
+    &#x27;line_style&#x27;: &#x27;dash&#x27;
+})
+track_layer.renderer().setSymbol(symbol)
+track_layer.triggerRepaint()
+
+station_layer = QgsVectorLayer(&quot;Point?crs=EPSG:4326&quot;, &quot;Railway_Stations&quot;, &quot;memory&quot;)
+station_provider = station_layer.dataProvider()
+station_provider.addAttributes([
+    QgsField(&quot;id&quot;, QVariant.Int),
+    QgsField(&quot;name&quot;, QVariant.String),
+    QgsField(&quot;line&quot;, QVariant.String)
+])
+station_layer.updateFields()
+
+stations_data = [
+    (1,  &quot;CST (CSMT)&quot;,         &quot;Harbour&quot;, 72.8353, 18.9398),
+    (2,  &quot;Masjid Bunder&quot;,      &quot;Harbour&quot;, 72.8392, 18.9478),
+    (3,  &quot;Sandhurst Road&quot;,     &quot;Harbour&quot;, 72.8420, 18.9538),
+    (4,  &quot;Dockyard Road&quot;,      &quot;Harbour&quot;, 72.8445, 18.9590),
+    (5,  &quot;Reay Road&quot;,          &quot;Harbour&quot;, 72.8470, 18.9640),
+    (6,  &quot;Cotton Green&quot;,       &quot;Harbour&quot;, 72.8500, 18.9700),
+    (7,  &quot;Sewri&quot;,              &quot;Harbour&quot;, 72.8540, 18.9770),
+    (8,  &quot;Vadala Road&quot;,        &quot;Harbour&quot;, 72.8590, 18.9830),
+    (9,  &quot;GTB Nagar&quot;,          &quot;Harbour&quot;, 72.8650, 18.9880),
+    (10, &quot;Chunabhatti&quot;,        &quot;Harbour&quot;, 72.8720, 18.9920),
+    (11, &quot;Kurla&quot;,              &quot;Harbour&quot;, 72.8790, 18.9960),
+    (12, &quot;Tilak Nagar&quot;,        &quot;Harbour&quot;, 72.8860, 19.0020),
+    (13, &quot;Chembur&quot;,            &quot;Harbour&quot;, 72.8940, 19.0070)
+]
+
+for sid, name, line, x, y in stations_data:
+    feat = QgsFeature()
+    feat.setGeometry(QgsGeometry.fromPointXY(QgsPointXY(x, y)))
+    feat.setAttributes([sid, name, line])
+    station_provider.addFeature(feat)
+
+station_layer.updateExtents()
+project.addMapLayer(station_layer)
+
+symbol = QgsMarkerSymbol.createSimple({
+    &#x27;name&#x27;: &#x27;square&#x27;,
+    &#x27;color&#x27;: &#x27;30,30,30&#x27;,
+    &#x27;size&#x27;: &#x27;3.5&#x27;,
+    &#x27;outline_color&#x27;: &#x27;0,0,0&#x27;,
+    &#x27;outline_width&#x27;: &#x27;0.3&#x27;
+})
+station_layer.renderer().setSymbol(symbol)
+station_layer.triggerRepaint()
+
+building_layer = QgsVectorLayer(&quot;Polygon?crs=EPSG:4326&quot;, &quot;Adjacent_Buildings&quot;, &quot;memory&quot;)
+building_provider = building_layer.dataProvider()
+building_provider.addAttributes([
+    QgsField(&quot;id&quot;, QVariant.Int),
+    QgsField(&quot;name&quot;, QVariant.String),
+    QgsField(&quot;type&quot;, QVariant.String)
+])
+building_layer.updateFields()
+
+buildings_data = [
+    (1,  &quot;CST Heritage Building&quot;,   &quot;Heritage&quot;,
+     [(72.8330,18.9390),(72.8345,18.9390),(72.8345,18.9405),(72.8330,18.9405),(72.8330,18.9390)]),
+    (2,  &quot;Masjid Market Complex&quot;,   &quot;Commercial&quot;,
+     [(72.8395,18.9470),(72.8410,18.9470),(72.8410,18.9485),(72.8395,18.9485),(72.8395,18.9470)]),
+    (3,  &quot;Sandhurst Residency&quot;,     &quot;Residential&quot;,
+     [(72.8425,18.9530),(72.8440,18.9530),(72.8440,18.9545),(72.8425,18.9545),(72.8425,18.9530)]),
+    (4,  &quot;Dockyard Warehouse&quot;,      &quot;Industrial&quot;,
+     [(72.8450,18.9582),(72.8465,18.9582),(72.8465,18.9597),(72.8450,18.9597),(72.8450,18.9582)]),
+    (5,  &quot;Reay Road Apartments&quot;,    &quot;Residential&quot;,
+     [(72.8475,18.9632),(72.8490,18.9632),(72.8490,18.9647),(72.8475,18.9647),(72.8475,18.9632)]),
+    (6,  &quot;Cotton Green Mill&quot;,       &quot;Industrial&quot;,
+     [(72.8505,18.9692),(72.8520,18.9692),(72.8520,18.9707),(72.8505,18.9707),(72.8505,18.9692)]),
+    (7,  &quot;Sewri Fort Complex&quot;,      &quot;Heritage&quot;,
+     [(72.8545,18.9762),(72.8560,18.9762),(72.8560,18.9777),(72.8545,18.9777),(72.8545,18.9762)]),
+    (8,  &quot;Vadala Business Park&quot;,    &quot;Commercial&quot;,
+     [(72.8595,18.9822),(72.8610,18.9822),(72.8610,18.9837),(72.8595,18.9837),(72.8595,18.9822)]),
+    (9,  &quot;GTB Nagar Housing&quot;,       &quot;Residential&quot;,
+     [(72.8655,18.9872),(72.8670,18.9872),(72.8670,18.9887),(72.8655,18.9887),(72.8655,18.9872)]),
+    (10, &quot;Kurla Terminus Complex&quot;,  &quot;Commercial&quot;,
+     [(72.8795,18.9952),(72.8810,18.9952),(72.8810,18.9967),(72.8795,18.9967),(72.8795,18.9952)]),
+    (11, &quot;Tilak Nagar Colony&quot;,      &quot;Residential&quot;,
+     [(72.8865,19.0012),(72.8880,19.0012),(72.8880,19.0027),(72.8865,19.0027),(72.8865,19.0012)]),
+    (12, &quot;Chembur Station Plaza&quot;,   &quot;Commercial&quot;,
+     [(72.8945,19.0062),(72.8960,19.0062),(72.8960,19.0077),(72.8945,19.0077),(72.8945,19.0062)])
+]
+
+for bid, name, btype, coords in buildings_data:
+    feat = QgsFeature()
+    points = [QgsPointXY(x, y) for x, y in coords]
+    feat.setGeometry(QgsGeometry.fromPolygonXY([points]))
+    feat.setAttributes([bid, name, btype])
+    building_provider.addFeature(feat)
+
+building_layer.updateExtents()
+project.addMapLayer(building_layer)
+
+symbol = QgsFillSymbol.createSimple({
+    &#x27;color&#x27;: &#x27;210,170,120,160&#x27;,
+    &#x27;outline_color&#x27;: &#x27;120,70,20&#x27;,
+    &#x27;outline_width&#x27;: &#x27;0.3&#x27;
+})
+building_layer.renderer().setSymbol(symbol)
+building_layer.triggerRepaint()
+
+road_layer = QgsVectorLayer(&quot;LineString?crs=EPSG:4326&quot;, &quot;Roads&quot;, &quot;memory&quot;)
+road_provider = road_layer.dataProvider()
+road_provider.addAttributes([
+    QgsField(&quot;id&quot;, QVariant.Int),
+    QgsField(&quot;name&quot;, QVariant.String)
+])
+road_layer.updateFields()
+
+roads_data = [
+    (1, &quot;DN Road&quot;,
+     [(72.832,18.940),(72.842,18.940)]),
+    (2, &quot;P D&#x27;Mello Road&quot;,
+     [(72.835,18.945),(72.845,18.955)]),
+    (3, &quot;Dr Babasaheb Ambedkar Road&quot;,
+     [(72.844,18.955),(72.844,18.975)]),
+    (4, &quot;Eastern Freeway&quot;,
+     [(72.848,18.962),(72.860,18.985)]),
+    (5, &quot;Sion-Trombay Road&quot;,
+     [(72.860,18.985),(72.875,18.995),(72.900,19.010)]),
+    (6, &quot;LBS Marg (Kurla)&quot;,
+     [(72.870,18.988),(72.885,19.000)])
+]
+
+for rid, name, coords in roads_data:
+    feat = QgsFeature()
+    points = [QgsPointXY(x, y) for x, y in coords]
+    feat.setGeometry(QgsGeometry.fromPolylineXY(points))
+    feat.setAttributes([rid, name])
+    road_provider.addFeature(feat)
+
+road_layer.updateExtents()
+project.addMapLayer(road_layer)
+
+symbol = QgsLineSymbol.createSimple({
+    &#x27;color&#x27;: &#x27;200,100,30&#x27;,
+    &#x27;width&#x27;: &#x27;0.8&#x27;
+})
+road_layer.renderer().setSymbol(symbol)
+road_layer.triggerRepaint()
+
+locality_layer = QgsVectorLayer(&quot;Polygon?crs=EPSG:4326&quot;, &quot;Localities&quot;, &quot;memory&quot;)
+locality_provider = locality_layer.dataProvider()
+locality_provider.addAttributes([
+    QgsField(&quot;id&quot;, QVariant.Int),
+    QgsField(&quot;name&quot;, QVariant.String)
+])
+locality_layer.updateFields()
+
+localities_data = [
+    (1, &quot;Fort / CST Area&quot;,
+     [(72.830,18.935),(72.845,18.935),(72.845,18.950),(72.830,18.950),(72.830,18.935)]),
+    (2, &quot;Byculla / Sandhurst&quot;,
+     [(72.838,18.950),(72.850,18.950),(72.850,18.965),(72.838,18.965),(72.838,18.950)]),
+    (3, &quot;Sewri / Wadala&quot;,
+     [(72.850,18.970),(72.865,18.970),(72.865,18.988),(72.850,18.988),(72.850,18.970)]),
+    (4, &quot;Kurla / Chunabhatti&quot;,
+     [(72.868,18.988),(72.885,18.988),(72.885,19.000),(72.868,19.000),(72.868,18.988)]),
+    (5, &quot;Chembur / Tilak Nagar&quot;,
+     [(72.882,18.998),(72.900,18.998),(72.900,19.012),(72.882,19.012),(72.882,18.998)])
+]
+
+for lid, name, coords in localities_data:
+    feat = QgsFeature()
+    points = [QgsPointXY(x, y) for x, y in coords]
+    feat.setGeometry(QgsGeometry.fromPolygonXY([points]))
+    feat.setAttributes([lid, name])
+    locality_provider.addFeature(feat)
+
+locality_layer.updateExtents()
+project.addMapLayer(locality_layer)
+
+symbol = QgsFillSymbol.createSimple({
+    &#x27;color&#x27;: &#x27;180,210,240,60&#x27;,
+    &#x27;outline_color&#x27;: &#x27;50,80,150&#x27;,
+    &#x27;outline_width&#x27;: &#x27;0.4&#x27;
+})
+locality_layer.renderer().setSymbol(symbol)
+locality_layer.triggerRepaint()
+
+landmark_layer = QgsVectorLayer(&quot;Point?crs=EPSG:4326&quot;, &quot;Landmarks&quot;, &quot;memory&quot;)
+landmark_provider = landmark_layer.dataProvider()
+landmark_provider.addAttributes([
+    QgsField(&quot;id&quot;, QVariant.Int),
+    QgsField(&quot;name&quot;, QVariant.String),
+    QgsField(&quot;type&quot;, QVariant.String)
+])
+landmark_layer.updateFields()
+
+landmarks_data = [
+    (1, &quot;Gateway of India&quot;,       &quot;Monument&quot;,   72.8347, 18.9220),
+    (2, &quot;BMC Headquarters&quot;,       &quot;Government&quot;, 72.8335, 18.9390),
+    (3, &quot;Wankhede Stadium&quot;,       &quot;Sports&quot;,     72.8268, 18.9388),
+    (4, &quot;Byculla Zoo&quot;,            &quot;Park&quot;,       72.8350, 18.9780),
+    (5, &quot;Nehru Planetarium&quot;,      &quot;Education&quot;,  72.8095, 18.9530),
+    (6, &quot;RCF Colony Chembur&quot;,     &quot;Residential&quot;,72.8950, 19.0050),
+    (7, &quot;Kurla Bus Depot&quot;,        &quot;Transport&quot;,  72.8800, 18.9940)
+]
+
+for lid, name, ltype, x, y in landmarks_data:
+    feat = QgsFeature()
+    feat.setGeometry(QgsGeometry.fromPointXY(QgsPointXY(x, y)))
+    feat.setAttributes([lid, name, ltype])
+    landmark_provider.addFeature(feat)
+
+landmark_layer.updateExtents()
+project.addMapLayer(landmark_layer)
+
+symbol = QgsMarkerSymbol.createSimple({
+    &#x27;name&#x27;: &#x27;star&#x27;,
+    &#x27;color&#x27;: &#x27;220,50,50&#x27;,
+    &#x27;size&#x27;: &#x27;4.5&#x27;,
+    &#x27;outline_color&#x27;: &#x27;150,0,0&#x27;,
+    &#x27;outline_width&#x27;: &#x27;0.3&#x27;
+})
+landmark_layer.renderer().setSymbol(symbol)
+landmark_layer.triggerRepaint()
+
+water_layer = QgsVectorLayer(&quot;Polygon?crs=EPSG:4326&quot;, &quot;Water_Bodies&quot;, &quot;memory&quot;)
+water_provider = water_layer.dataProvider()
+water_provider.addAttributes([
+    QgsField(&quot;id&quot;, QVariant.Int),
+    QgsField(&quot;name&quot;, QVariant.String)
+])
+water_layer.updateFields()
+
+water_data = [
+    (1, &quot;Mumbai Docks&quot;,
+     [(72.845,18.935),(72.860,18.935),(72.860,18.945),(72.845,18.945),(72.845,18.935)]),
+    (2, &quot;Sewri Mudflats&quot;,
+     [(72.855,18.968),(72.870,18.968),(72.870,18.978),(72.855,18.978),(72.855,18.968)]),
+    (3, &quot;Mahul Creek&quot;,
+     [(72.895,19.000),(72.910,19.000),(72.910,19.010),(72.895,19.010),(72.895,19.000)])
+]
+
+for wid, name, coords in water_data:
+    feat = QgsFeature()
+    points = [QgsPointXY(x, y) for x, y in coords]
+    feat.setGeometry(QgsGeometry.fromPolygonXY([points]))
+    feat.setAttributes([wid, name])
+    water_provider.addFeature(feat)
+
+water_layer.updateExtents()
+project.addMapLayer(water_layer)
+
+symbol = QgsFillSymbol.createSimple({
+    &#x27;color&#x27;: &#x27;100,180,255,120&#x27;,
+    &#x27;outline_color&#x27;: &#x27;0,80,180&#x27;,
+    &#x27;outline_width&#x27;: &#x27;0.4&#x27;
+})
+water_layer.renderer().setSymbol(symbol)
+water_layer.triggerRepaint()
+
+label_layers = [
+    (track_layer, &quot;name&quot;),
+    (station_layer, &quot;name&quot;),
+    (building_layer, &quot;name&quot;),
+    (road_layer, &quot;name&quot;),
+    (locality_layer, &quot;name&quot;),
+    (landmark_layer, &quot;name&quot;),
+    (water_layer, &quot;name&quot;)
+]
+
+for layer, field in label_layers:
+    settings = QgsPalLayerSettings()
+    settings.fieldName = field
+    settings.enabled = True
+    text_format = QgsTextFormat()
+    text_format.setSize(8)
+    buffer = QgsTextBufferSettings()
+    buffer.setEnabled(True)
+    buffer.setSize(1)
+    buffer.setColor(QColor(255, 255, 255))
+    text_format.setBuffer(buffer)
+    settings.setFormat(text_format)
+    labeling = QgsVectorLayerSimpleLabeling(settings)
+    layer.setLabelsEnabled(True)
+    layer.setLabeling(labeling)
+    layer.triggerRepaint()
+
+canvas = iface.mapCanvas()
+canvas.setExtent(track_layer.extent())
+canvas.refresh()
+
+print(&quot;=&quot; * 65)
+print(&quot;  Q1: Railway Route CST to Chembur - MAP CREATED SUCCESSFULLY!&quot;)
+print(&quot;=&quot; * 65)
+print(f&quot;  Layer 1: Railway Track     : {track_layer.featureCount()} feature  (Harbour Line)&quot;)
+print(f&quot;  Layer 2: Railway Stations  : {station_layer.featureCount()} features (CST to Chembur)&quot;)
+print(f&quot;  Layer 3: Adjacent Buildings: {building_layer.featureCount()} features (along track)&quot;)
+print(f&quot;  Layer 4: Roads / Crossings : {road_layer.featureCount()} features (major roads)&quot;)
+print(f&quot;  Layer 5: Localities        : {locality_layer.featureCount()} features (area zones)&quot;)
+print(f&quot;  Layer 6: Landmarks         : {landmark_layer.featureCount()} features (notable places)&quot;)
+print(f&quot;  Layer 7: Water Bodies      : {water_layer.featureCount()} features (docks/creeks)&quot;)
+print(&quot;=&quot; * 65)
+print(&quot;  Route: CST -&gt; Masjid -&gt; Sandhurst -&gt; Dockyard -&gt; Reay Road&quot;)
+print(&quot;         -&gt; Cotton Green -&gt; Sewri -&gt; Vadala -&gt; GTB Nagar&quot;)
+print(&quot;         -&gt; Chunabhatti -&gt; Kurla -&gt; Tilak Nagar -&gt; Chembur&quot;)
+print(&quot;  CRS: EPSG:4326 (WGS 84)&quot;)
+print(&quot;=&quot; * 65)
+</pre>
+</body>
+</html>

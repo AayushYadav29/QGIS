@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Q9 - Residential Join</title>
+</head>
+<body>
+    <pre style="font-size:3px;">from qgis.core import *
+from qgis.gui import *
+from PyQt5.QtGui import QColor
+from PyQt5.QtCore import QVariant
+import processing
+import os
+
+project = QgsProject.instance()
+project.setTitle(&quot;GIS Practical - Residential Layer &amp; Join by Location&quot;)
+download_dir = os.path.join(os.path.expanduser(&quot;~&quot;), &quot;Downloads&quot;)
+
+print(&quot;=&quot; * 65)
+print(&quot;  Q1: Residential Layer &amp; Join Attribute by Location&quot;)
+print(&quot;=&quot; * 65)
+
+res_layer = QgsVectorLayer(&quot;Polygon?crs=EPSG:4326&quot;, &quot;Residential_Areas&quot;, &quot;memory&quot;)
+res_prov = res_layer.dataProvider()
+res_prov.addAttributes([
+    QgsField(&quot;id&quot;, QVariant.Int),
+    QgsField(&quot;name&quot;, QVariant.String),
+    QgsField(&quot;ward&quot;, QVariant.String),
+    QgsField(&quot;population&quot;, QVariant.Int)
+])
+res_layer.updateFields()
+
+residential_data = [
+    (1, &quot;Sunrise Society&quot;,    &quot;Ward A&quot;, 1200,
+     [(72.840,19.060),(72.855,19.060),(72.855,19.075),(72.840,19.075),(72.840,19.060)]),
+    (2, &quot;Green Park Colony&quot;,  &quot;Ward A&quot;, 1500,
+     [(72.855,19.060),(72.870,19.060),(72.870,19.075),(72.855,19.075),(72.855,19.060)]),
+    (3, &quot;Lake View Nagar&quot;,    &quot;Ward B&quot;, 2000,
+     [(72.840,19.075),(72.855,19.075),(72.855,19.090),(72.840,19.090),(72.840,19.075)]),
+    (4, &quot;Royal Residency&quot;,    &quot;Ward B&quot;, 1800,
+     [(72.855,19.075),(72.870,19.075),(72.870,19.090),(72.855,19.090),(72.855,19.075)]),
+    (5, &quot;Heritage Heights&quot;,   &quot;Ward C&quot;, 900,
+     [(72.840,19.090),(72.855,19.090),(72.855,19.105),(72.840,19.105),(72.840,19.090)]),
+    (6, &quot;Palm Grove Estate&quot;,  &quot;Ward C&quot;, 1100,
+     [(72.855,19.090),(72.870,19.090),(72.870,19.105),(72.855,19.105),(72.855,19.090)])
+]
+
+for rid, name, ward, pop, coords in residential_data:
+    feat = QgsFeature()
+    pts = [QgsPointXY(x, y) for x, y in coords]
+    feat.setGeometry(QgsGeometry.fromPolygonXY([pts]))
+    feat.setAttributes([rid, name, ward, pop])
+    res_prov.addFeature(feat)
+
+res_layer.updateExtents()
+project.addMapLayer(res_layer)
+
+symbol = QgsFillSymbol.createSimple({
+    &#x27;color&#x27;: &#x27;200,220,255,80&#x27;,
+    &#x27;outline_color&#x27;: &#x27;40,80,160&#x27;,
+    &#x27;outline_width&#x27;: &#x27;0.5&#x27;
+})
+res_layer.renderer().setSymbol(symbol)
+res_layer.triggerRepaint()
+print(f&quot;\n  Residential Areas: {res_layer.featureCount()} polygons created&quot;)
+
+shop_layer = QgsVectorLayer(&quot;Point?crs=EPSG:4326&quot;, &quot;Shops&quot;, &quot;memory&quot;)
+shop_prov = shop_layer.dataProvider()
+shop_prov.addAttributes([
+    QgsField(&quot;id&quot;, QVariant.Int),
+    QgsField(&quot;name&quot;, QVariant.String),
+    QgsField(&quot;shop_type&quot;, QVariant.String),
+    QgsField(&quot;monthly_revenue&quot;, QVariant.Double)
+])
+shop_layer.updateFields()
+
+shops_data = [
+    (1,  &quot;Sharma Kirana&quot;,     &quot;Grocery&quot;,     85000,  72.845, 19.065),
+    (2,  &quot;Fresh Mart&quot;,        &quot;Grocery&quot;,     92000,  72.860, 19.068),
+    (3,  &quot;Style Hub&quot;,         &quot;Clothing&quot;,    120000, 72.848, 19.080),
+    (4,  &quot;Royal Pharmacy&quot;,    &quot;Medical&quot;,     75000,  72.862, 19.082),
+    (5,  &quot;Book Corner&quot;,       &quot;Stationery&quot;,  45000,  72.845, 19.095),
+    (6,  &quot;Palm Electronics&quot;,  &quot;Electronics&quot;, 150000, 72.860, 19.098),
+    (7,  &quot;Daily Needs&quot;,       &quot;Grocery&quot;,     65000,  72.850, 19.067),
+    (8,  &quot;Veggie Fresh&quot;,      &quot;Grocery&quot;,     55000,  72.846, 19.078),
+    (9,  &quot;Fashion Street&quot;,    &quot;Clothing&quot;,    95000,  72.863, 19.095),
+    (10, &quot;Quick Snacks&quot;,      &quot;Food&quot;,        70000,  72.858, 19.085)
+]
+
+for sid, name, stype, rev, x, y in shops_data:
+    feat = QgsFeature()
+    feat.setGeometry(QgsGeometry.fromPointXY(QgsPointXY(x, y)))
+    feat.setAttributes([sid, name, stype, rev])
+    shop_prov.addFeature(feat)
+
+shop_layer.updateExtents()
+project.addMapLayer(shop_layer)
+
+symbol = QgsMarkerSymbol.createSimple({
+    &#x27;name&#x27;: &#x27;square&#x27;, &#x27;color&#x27;: &#x27;255,165,0&#x27;, &#x27;size&#x27;: &#x27;4&#x27;,
+    &#x27;outline_color&#x27;: &#x27;180,100,0&#x27;, &#x27;outline_width&#x27;: &#x27;0.3&#x27;
+})
+shop_layer.renderer().setSymbol(symbol)
+shop_layer.triggerRepaint()
+print(f&quot;  Shops: {shop_layer.featureCount()} points created&quot;)
+
+school_layer = QgsVectorLayer(&quot;Point?crs=EPSG:4326&quot;, &quot;Schools&quot;, &quot;memory&quot;)
+school_prov = school_layer.dataProvider()
+school_prov.addAttributes([
+    QgsField(&quot;id&quot;, QVariant.Int),
+    QgsField(&quot;name&quot;, QVariant.String),
+    QgsField(&quot;students&quot;, QVariant.Int)
+])
+school_layer.updateFields()
+
+schools_data = [
+    (1, &quot;Sunrise Primary School&quot;,    350, 72.847, 19.070),
+    (2, &quot;Green Park High School&quot;,    500, 72.862, 19.065),
+    (3, &quot;Lake View Vidyalaya&quot;,       420, 72.850, 19.083),
+    (4, &quot;Heritage Public School&quot;,    280, 72.847, 19.098),
+    (5, &quot;Royal International School&quot;,600, 72.860, 19.080)
+]
+
+for sid, name, students, x, y in schools_data:
+    feat = QgsFeature()
+    feat.setGeometry(QgsGeometry.fromPointXY(QgsPointXY(x, y)))
+    feat.setAttributes([sid, name, students])
+    school_prov.addFeature(feat)
+
+school_layer.updateExtents()
+project.addMapLayer(school_layer)
+
+symbol = QgsMarkerSymbol.createSimple({
+    &#x27;name&#x27;: &#x27;triangle&#x27;, &#x27;color&#x27;: &#x27;30,100,220&#x27;, &#x27;size&#x27;: &#x27;4.5&#x27;,
+    &#x27;outline_color&#x27;: &#x27;0,50,150&#x27;, &#x27;outline_width&#x27;: &#x27;0.4&#x27;
+})
+school_layer.renderer().setSymbol(symbol)
+school_layer.triggerRepaint()
+print(f&quot;  Schools: {school_layer.featureCount()} points created&quot;)
+
+clinic_layer = QgsVectorLayer(&quot;Point?crs=EPSG:4326&quot;, &quot;Clinics&quot;, &quot;memory&quot;)
+clinic_prov = clinic_layer.dataProvider()
+clinic_prov.addAttributes([
+    QgsField(&quot;id&quot;, QVariant.Int),
+    QgsField(&quot;name&quot;, QVariant.String),
+    QgsField(&quot;specialty&quot;, QVariant.String)
+])
+clinic_layer.updateFields()
+
+clinics_data = [
+    (1, &quot;City Clinic&quot;,       &quot;General&quot;,    72.843, 19.063),
+    (2, &quot;Dental Care&quot;,       &quot;Dental&quot;,     72.858, 19.070),
+    (3, &quot;Eye Care Center&quot;,   &quot;Ophthalmo&quot;,  72.852, 19.087),
+    (4, &quot;Skin &amp; Hair Clinic&quot;,&quot;Dermatology&quot;, 72.862, 19.100),
+    (5, &quot;Child Care Clinic&quot;, &quot;Pediatrics&quot;, 72.845, 19.092)
+]
+
+for cid, name, spec, x, y in clinics_data:
+    feat = QgsFeature()
+    feat.setGeometry(QgsGeometry.fromPointXY(QgsPointXY(x, y)))
+    feat.setAttributes([cid, name, spec])
+    clinic_prov.addFeature(feat)
+
+clinic_layer.updateExtents()
+project.addMapLayer(clinic_layer)
+
+symbol = QgsMarkerSymbol.createSimple({
+    &#x27;name&#x27;: &#x27;cross&#x27;, &#x27;color&#x27;: &#x27;220,0,0&#x27;, &#x27;size&#x27;: &#x27;4.5&#x27;,
+    &#x27;outline_color&#x27;: &#x27;150,0,0&#x27;, &#x27;outline_width&#x27;: &#x27;0.5&#x27;
+})
+clinic_layer.renderer().setSymbol(symbol)
+clinic_layer.triggerRepaint()
+print(f&quot;  Clinics: {clinic_layer.featureCount()} points created&quot;)
+
+for layer, field in [(res_layer,&quot;name&quot;),(shop_layer,&quot;name&quot;),(school_layer,&quot;name&quot;),(clinic_layer,&quot;name&quot;)]:
+    settings = QgsPalLayerSettings()
+    settings.fieldName = field
+    settings.enabled = True
+    tf = QgsTextFormat()
+    tf.setSize(7)
+    buf = QgsTextBufferSettings()
+    buf.setEnabled(True)
+    buf.setSize(1)
+    buf.setColor(QColor(255,255,255))
+    tf.setBuffer(buf)
+    settings.setFormat(tf)
+    layer.setLabelsEnabled(True)
+    layer.setLabeling(QgsVectorLayerSimpleLabeling(settings))
+    layer.triggerRepaint()
+
+print(&quot;\n&quot; + &quot;-&quot; * 65)
+print(&quot;  SPATIAL JOIN: Join Shop data to Residential Areas by Location&quot;)
+print(&quot;-&quot; * 65)
+
+join_output = os.path.join(download_dir, &quot;spatial_join_result.shp&quot;)
+
+try:
+    result = processing.run(&quot;native:joinattributesbylocation&quot;, {
+        &#x27;INPUT&#x27;: res_layer,
+        &#x27;JOIN&#x27;: shop_layer,
+        &#x27;PREDICATE&#x27;: [0],
+        &#x27;JOIN_FIELDS&#x27;: [&#x27;name&#x27;, &#x27;shop_type&#x27;, &#x27;monthly_revenue&#x27;],
+        &#x27;METHOD&#x27;: 0,
+        &#x27;DISCARD_NONMATCHING&#x27;: False,
+        &#x27;PREFIX&#x27;: &#x27;shop_&#x27;,
+        &#x27;OUTPUT&#x27;: join_output
+    })
+
+    joined_layer = QgsVectorLayer(join_output, &quot;Spatial_Join_Result&quot;, &quot;ogr&quot;)
+    if joined_layer.isValid():
+        project.addMapLayer(joined_layer)
+
+        sym = QgsFillSymbol.createSimple({
+            &#x27;color&#x27;: &#x27;180,255,180,80&#x27;,
+            &#x27;outline_color&#x27;: &#x27;0,120,0&#x27;,
+            &#x27;outline_width&#x27;: &#x27;0.5&#x27;
+        })
+        joined_layer.renderer().setSymbol(sym)
+        joined_layer.triggerRepaint()
+
+        print(&quot;\n  Spatial Join Results (Residential Area -&gt; Shops inside):&quot;)
+        print(f&quot;  {&#x27;Residential Area&#x27;:&lt;22s} {&#x27;Shop Name&#x27;:&lt;20s} {&#x27;Type&#x27;:&lt;12s} {&#x27;Revenue&#x27;:&gt;10s}&quot;)
+        print(f&quot;  {&#x27;-&#x27;*22} {&#x27;-&#x27;*20} {&#x27;-&#x27;*12} {&#x27;-&#x27;*10}&quot;)
+
+        for feat in joined_layer.getFeatures():
+            res_name = feat[&#x27;name&#x27;]
+            shop_name = feat[&#x27;shop_name&#x27;] if feat[&#x27;shop_name&#x27;] else &quot;(none)&quot;
+            shop_type = feat[&#x27;shop_type&#x27;] if feat[&#x27;shop_type&#x27;] else &quot;&quot;
+            revenue = feat[&#x27;shop_monthly_revenue&#x27;] if feat[&#x27;shop_monthly_revenue&#x27;] else 0
+            print(f&quot;  {res_name:&lt;22s} {shop_name:&lt;20s} {shop_type:&lt;12s} {revenue:&gt;10.0f}&quot;)
+
+        print(f&quot;\n  [OK] Spatial Join output: spatial_join_result.shp&quot;)
+    else:
+        print(&quot;  [NOTE] Could not load joined layer&quot;)
+
+except Exception as e:
+    print(f&quot;  [NOTE] Processing: {e}&quot;)
+
+print(&quot;\n  --- Manual Spatial Join Verification ---&quot;)
+print(f&quot;\n  {&#x27;Residential Area&#x27;:&lt;22s} {&#x27;Shops Inside&#x27;:&gt;15s}&quot;)
+print(f&quot;  {&#x27;-&#x27;*22} {&#x27;-&#x27;*15}&quot;)
+
+shop_features = list(shop_layer.getFeatures())
+
+for res_feat in res_layer.getFeatures():
+    res_geom = res_feat.geometry()
+    res_name = res_feat[&#x27;name&#x27;]
+    shops_inside = []
+    for s in shop_features:
+        if res_geom.contains(s.geometry()):
+            shops_inside.append(s[&#x27;name&#x27;])
+
+    print(f&quot;  {res_name:&lt;22s} {len(shops_inside):&gt;15d}&quot;)
+    for sname in shops_inside:
+        print(f&quot;    -&gt; {sname}&quot;)
+
+canvas = iface.mapCanvas()
+canvas.setExtent(res_layer.extent())
+canvas.refresh()
+
+print(&quot;\n&quot; + &quot;=&quot; * 65)
+print(&quot;  Q1: Residential Layer &amp; Spatial Join - COMPLETED!&quot;)
+print(&quot;=&quot; * 65)
+print(f&quot;  Residential Areas : {res_layer.featureCount()} polygons (6 societies, 3 wards)&quot;)
+print(f&quot;  Shops             : {shop_layer.featureCount()} points (with revenue data)&quot;)
+print(f&quot;  Schools           : {school_layer.featureCount()} points (with student count)&quot;)
+print(f&quot;  Clinics           : {clinic_layer.featureCount()} points (with specialty)&quot;)
+print(f&quot;\n  Join Attribute by Location:&quot;)
+print(f&quot;    Input  : Residential_Areas (polygon)&quot;)
+print(f&quot;    Join   : Shops (points)&quot;)
+print(f&quot;    Method : Intersects (one-to-many)&quot;)
+print(f&quot;    Output : spatial_join_result.shp&quot;)
+print(&quot;=&quot; * 65)
+</pre>
+</body>
+</html>

@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Q10 - Count Points Polygon</title>
+</head>
+<body>
+    <pre style="font-size:3px;">from qgis.core import *
+from qgis.gui import *
+from PyQt5.QtGui import QColor
+from PyQt5.QtCore import QVariant
+import processing
+import os
+
+project = QgsProject.instance()
+download_dir = os.path.join(os.path.expanduser(&quot;~&quot;), &quot;Downloads&quot;)
+
+res_list     = project.mapLayersByName(&quot;Residential_Areas&quot;)
+shops_list   = project.mapLayersByName(&quot;Shops&quot;)
+schools_list = project.mapLayersByName(&quot;Schools&quot;)
+clinics_list = project.mapLayersByName(&quot;Clinics&quot;)
+
+if not res_list or not shops_list or not schools_list or not clinics_list:
+    print(&quot;ERROR: Please run Q13_Residential_Join.py first!&quot;)
+    raise Exception(&quot;Required layers not found. Run Q13 first.&quot;)
+
+residential = res_list[0]
+shops       = shops_list[0]
+schools     = schools_list[0]
+clinics     = clinics_list[0]
+
+print(&quot;=&quot; * 65)
+print(&quot;  Q2: Count Points in Polygon - Analysis Tool Results&quot;)
+print(&quot;=&quot; * 65)
+
+print(&quot;\n&quot; + &quot;-&quot; * 65)
+print(&quot;  Analysis 1: Count SHOPS in each Residential Area&quot;)
+print(&quot;-&quot; * 65)
+
+shops_output = os.path.join(download_dir, &quot;count_shops_in_residential.shp&quot;)
+
+try:
+    result = processing.run(&quot;native:countpointsinpolygon&quot;, {
+        &#x27;POLYGONS&#x27;: residential,
+        &#x27;POINTS&#x27;: shops,
+        &#x27;WEIGHT&#x27;: &#x27;&#x27;,
+        &#x27;CLASSFIELD&#x27;: &#x27;&#x27;,
+        &#x27;FIELD&#x27;: &#x27;SHOP_COUNT&#x27;,
+        &#x27;OUTPUT&#x27;: shops_output
+    })
+
+    shops_result = QgsVectorLayer(shops_output, &quot;Shops_Count_Per_Area&quot;, &quot;ogr&quot;)
+    if shops_result.isValid():
+        project.addMapLayer(shops_result)
+
+        ranges = []
+        sym0 = QgsFillSymbol.createSimple({&#x27;color&#x27;:&#x27;220,240,220,120&#x27;,&#x27;outline_color&#x27;:&#x27;0,100,0&#x27;,&#x27;outline_width&#x27;:&#x27;0.4&#x27;})
+        sym1 = QgsFillSymbol.createSimple({&#x27;color&#x27;:&#x27;144,238,144,150&#x27;,&#x27;outline_color&#x27;:&#x27;0,100,0&#x27;,&#x27;outline_width&#x27;:&#x27;0.4&#x27;})
+        sym2 = QgsFillSymbol.createSimple({&#x27;color&#x27;:&#x27;60,179,113,180&#x27;,&#x27;outline_color&#x27;:&#x27;0,80,0&#x27;,&#x27;outline_width&#x27;:&#x27;0.4&#x27;})
+        ranges.append(QgsRendererRange(0, 1, sym0, &quot;0-1 shops&quot;))
+        ranges.append(QgsRendererRange(1, 2, sym1, &quot;1-2 shops&quot;))
+        ranges.append(QgsRendererRange(2, 5, sym2, &quot;2+ shops&quot;))
+        renderer = QgsGraduatedSymbolRenderer(&quot;SHOP_COUNT&quot;, ranges)
+        shops_result.setRenderer(renderer)
+        shops_result.triggerRepaint()
+
+        print(f&quot;\n  {&#x27;Residential Area&#x27;:&lt;22s} {&#x27;Shop Count&#x27;:&gt;12s}&quot;)
+        print(f&quot;  {&#x27;-&#x27;*22} {&#x27;-&#x27;*12}&quot;)
+        for feat in shops_result.getFeatures():
+            print(f&quot;  {feat[&#x27;name&#x27;]:&lt;22s} {feat[&#x27;SHOP_COUNT&#x27;]:&gt;12d}&quot;)
+
+        print(f&quot;\n  [OK] Output: count_shops_in_residential.shp&quot;)
+        print(&quot;  [OK] Graduated color applied (lighter = fewer shops)&quot;)
+
+except Exception as e:
+    print(f&quot;  [NOTE] Processing: {e}&quot;)
+
+print(&quot;\n&quot; + &quot;-&quot; * 65)
+print(&quot;  Analysis 2: Count SCHOOLS in each Residential Area&quot;)
+print(&quot;-&quot; * 65)
+
+schools_output = os.path.join(download_dir, &quot;count_schools_in_residential.shp&quot;)
+
+try:
+    result = processing.run(&quot;native:countpointsinpolygon&quot;, {
+        &#x27;POLYGONS&#x27;: residential,
+        &#x27;POINTS&#x27;: schools,
+        &#x27;WEIGHT&#x27;: &#x27;&#x27;,
+        &#x27;CLASSFIELD&#x27;: &#x27;&#x27;,
+        &#x27;FIELD&#x27;: &#x27;SCHOOL_CNT&#x27;,
+        &#x27;OUTPUT&#x27;: schools_output
+    })
+
+    schools_result = QgsVectorLayer(schools_output, &quot;Schools_Count_Per_Area&quot;, &quot;ogr&quot;)
+    if schools_result.isValid():
+        project.addMapLayer(schools_result)
+
+        print(f&quot;\n  {&#x27;Residential Area&#x27;:&lt;22s} {&#x27;School Count&#x27;:&gt;12s}&quot;)
+        print(f&quot;  {&#x27;-&#x27;*22} {&#x27;-&#x27;*12}&quot;)
+        for feat in schools_result.getFeatures():
+            print(f&quot;  {feat[&#x27;name&#x27;]:&lt;22s} {feat[&#x27;SCHOOL_CNT&#x27;]:&gt;12d}&quot;)
+
+        print(f&quot;\n  [OK] Output: count_schools_in_residential.shp&quot;)
+
+except Exception as e:
+    print(f&quot;  [NOTE] Processing: {e}&quot;)
+
+print(&quot;\n&quot; + &quot;-&quot; * 65)
+print(&quot;  Analysis 3: Count CLINICS in each Residential Area&quot;)
+print(&quot;-&quot; * 65)
+
+clinics_output = os.path.join(download_dir, &quot;count_clinics_in_residential.shp&quot;)
+
+try:
+    result = processing.run(&quot;native:countpointsinpolygon&quot;, {
+        &#x27;POLYGONS&#x27;: residential,
+        &#x27;POINTS&#x27;: clinics,
+        &#x27;WEIGHT&#x27;: &#x27;&#x27;,
+        &#x27;CLASSFIELD&#x27;: &#x27;&#x27;,
+        &#x27;FIELD&#x27;: &#x27;CLINIC_CNT&#x27;,
+        &#x27;OUTPUT&#x27;: clinics_output
+    })
+
+    clinics_result = QgsVectorLayer(clinics_output, &quot;Clinics_Count_Per_Area&quot;, &quot;ogr&quot;)
+    if clinics_result.isValid():
+        project.addMapLayer(clinics_result)
+
+        print(f&quot;\n  {&#x27;Residential Area&#x27;:&lt;22s} {&#x27;Clinic Count&#x27;:&gt;12s}&quot;)
+        print(f&quot;  {&#x27;-&#x27;*22} {&#x27;-&#x27;*12}&quot;)
+        for feat in clinics_result.getFeatures():
+            print(f&quot;  {feat[&#x27;name&#x27;]:&lt;22s} {feat[&#x27;CLINIC_CNT&#x27;]:&gt;12d}&quot;)
+
+        print(f&quot;\n  [OK] Output: count_clinics_in_residential.shp&quot;)
+
+except Exception as e:
+    print(f&quot;  [NOTE] Processing: {e}&quot;)
+
+print(&quot;\n&quot; + &quot;-&quot; * 65)
+print(&quot;  COMBINED SUMMARY (Manual Verification)&quot;)
+print(&quot;-&quot; * 65)
+
+shop_features   = list(shops.getFeatures())
+school_features = list(schools.getFeatures())
+clinic_features = list(clinics.getFeatures())
+
+print(f&quot;\n  {&#x27;Residential Area&#x27;:&lt;22s} {&#x27;Shops&#x27;:&gt;7s} {&#x27;Schools&#x27;:&gt;9s} {&#x27;Clinics&#x27;:&gt;9s} {&#x27;Total&#x27;:&gt;7s}&quot;)
+print(f&quot;  {&#x27;-&#x27;*22} {&#x27;-&#x27;*7} {&#x27;-&#x27;*9} {&#x27;-&#x27;*9} {&#x27;-&#x27;*7}&quot;)
+
+grand_shops = grand_schools = grand_clinics = 0
+
+for res_feat in residential.getFeatures():
+    res_geom = res_feat.geometry()
+    res_name = res_feat[&#x27;name&#x27;]
+
+    s_count = sum(1 for s in shop_features if res_geom.contains(s.geometry()))
+    sc_count = sum(1 for s in school_features if res_geom.contains(s.geometry()))
+    c_count = sum(1 for c in clinic_features if res_geom.contains(c.geometry()))
+    total = s_count + sc_count + c_count
+
+    grand_shops += s_count
+    grand_schools += sc_count
+    grand_clinics += c_count
+
+    print(f&quot;  {res_name:&lt;22s} {s_count:&gt;7d} {sc_count:&gt;9d} {c_count:&gt;9d} {total:&gt;7d}&quot;)
+
+print(f&quot;  {&#x27;=&#x27;*22} {&#x27;=&#x27;*7} {&#x27;=&#x27;*9} {&#x27;=&#x27;*9} {&#x27;=&#x27;*7}&quot;)
+print(f&quot;  {&#x27;TOTAL&#x27;:&lt;22s} {grand_shops:&gt;7d} {grand_schools:&gt;9d} {grand_clinics:&gt;9d} {grand_shops+grand_schools+grand_clinics:&gt;7d}&quot;)
+
+print(&quot;\n&quot; + &quot;=&quot; * 65)
+print(&quot;  Q2: Count Points in Polygon - COMPLETED!&quot;)
+print(&quot;=&quot; * 65)
+print(&quot;  Analysis Tool Used: native:countpointsinpolygon&quot;)
+print(&quot;  Polygon Layer: Residential_Areas (6 areas)&quot;)
+print(&quot;  Point Layers Counted:&quot;)
+print(f&quot;    - Shops   : {shops.featureCount()} points -&gt; SHOP_COUNT field&quot;)
+print(f&quot;    - Schools : {schools.featureCount()} points -&gt; SCHOOL_CNT field&quot;)
+print(f&quot;    - Clinics : {clinics.featureCount()} points -&gt; CLINIC_CNT field&quot;)
+print(&quot;  Outputs:&quot;)
+print(&quot;    - count_shops_in_residential.shp (with graduated colors)&quot;)
+print(&quot;    - count_schools_in_residential.shp&quot;)
+print(&quot;    - count_clinics_in_residential.shp&quot;)
+print(&quot;=&quot; * 65)
+</pre>
+</body>
+</html>

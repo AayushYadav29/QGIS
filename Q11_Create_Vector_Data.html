@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Q11 - Create Vector Data</title>
+</head>
+<body>
+    <pre style="font-size:3px;">from qgis.core import *
+from qgis.gui import *
+from PyQt5.QtGui import QColor
+from PyQt5.QtCore import QVariant
+
+project = QgsProject.instance()
+project.setTitle(&quot;GIS Practical - Vector Data with Database&quot;)
+
+road_layer = QgsVectorLayer(&quot;LineString?crs=EPSG:4326&quot;, &quot;Roads&quot;, &quot;memory&quot;)
+road_provider = road_layer.dataProvider()
+road_provider.addAttributes([
+    QgsField(&quot;id&quot;, QVariant.Int),
+    QgsField(&quot;name&quot;, QVariant.String),
+    QgsField(&quot;road_type&quot;, QVariant.String),
+    QgsField(&quot;length_km&quot;, QVariant.Double)
+])
+road_layer.updateFields()
+
+roads_data = [
+    (1, &quot;MG Road&quot;,            &quot;National Highway&quot;,
+     [(72.830,19.070),(72.870,19.070)], 4.2),
+    (2, &quot;Station Road&quot;,       &quot;State Highway&quot;,
+     [(72.845,19.055),(72.845,19.085)], 3.3),
+    (3, &quot;Link Road&quot;,          &quot;City Road&quot;,
+     [(72.835,19.060),(72.860,19.080)], 3.0),
+    (4, &quot;Ring Road&quot;,          &quot;City Road&quot;,
+     [(72.830,19.080),(72.850,19.085),(72.870,19.080)], 4.5),
+    (5, &quot;Industrial Road&quot;,    &quot;State Highway&quot;,
+     [(72.860,19.055),(72.860,19.085)], 3.3)
+]
+
+for rid, name, rtype, coords, length in roads_data:
+    feat = QgsFeature()
+    points = [QgsPointXY(x, y) for x, y in coords]
+    feat.setGeometry(QgsGeometry.fromPolylineXY(points))
+    feat.setAttributes([rid, name, rtype, length])
+    road_provider.addFeature(feat)
+
+road_layer.updateExtents()
+project.addMapLayer(road_layer)
+
+symbol = QgsLineSymbol.createSimple({
+    &#x27;color&#x27;: &#x27;60,60,60&#x27;,
+    &#x27;width&#x27;: &#x27;1.0&#x27;
+})
+road_layer.renderer().setSymbol(symbol)
+road_layer.triggerRepaint()
+
+river_layer = QgsVectorLayer(&quot;LineString?crs=EPSG:4326&quot;, &quot;Rivers&quot;, &quot;memory&quot;)
+river_provider = river_layer.dataProvider()
+river_provider.addAttributes([
+    QgsField(&quot;id&quot;, QVariant.Int),
+    QgsField(&quot;name&quot;, QVariant.String),
+    QgsField(&quot;width_m&quot;, QVariant.Double)
+])
+river_layer.updateFields()
+
+rivers_data = [
+    (1, &quot;Nadi River&quot;,   15.0,
+     [(72.828,19.075),(72.840,19.068),(72.855,19.072),(72.872,19.065)]),
+    (2, &quot;Jheel Nallah&quot;, 8.0,
+     [(72.850,19.088),(72.852,19.078),(72.855,19.065),(72.858,19.053)])
+]
+
+for rid, name, width, coords in rivers_data:
+    feat = QgsFeature()
+    points = [QgsPointXY(x, y) for x, y in coords]
+    feat.setGeometry(QgsGeometry.fromPolylineXY(points))
+    feat.setAttributes([rid, name, width])
+    river_provider.addFeature(feat)
+
+river_layer.updateExtents()
+project.addMapLayer(river_layer)
+
+symbol = QgsLineSymbol.createSimple({
+    &#x27;color&#x27;: &#x27;30,100,220&#x27;,
+    &#x27;width&#x27;: &#x27;0.9&#x27;
+})
+river_layer.renderer().setSymbol(symbol)
+river_layer.triggerRepaint()
+
+zone_layer = QgsVectorLayer(&quot;Polygon?crs=EPSG:4326&quot;, &quot;Zones&quot;, &quot;memory&quot;)
+zone_provider = zone_layer.dataProvider()
+zone_provider.addAttributes([
+    QgsField(&quot;id&quot;, QVariant.Int),
+    QgsField(&quot;name&quot;, QVariant.String),
+    QgsField(&quot;zone_type&quot;, QVariant.String),
+    QgsField(&quot;population&quot;, QVariant.Int)
+])
+zone_layer.updateFields()
+
+zones_data = [
+    (1, &quot;North Ward&quot;,      &quot;Residential&quot;, 25000,
+     [(72.830,19.070),(72.850,19.070),(72.850,19.088),(72.830,19.088),(72.830,19.070)]),
+    (2, &quot;South Ward&quot;,      &quot;Residential&quot;, 30000,
+     [(72.830,19.052),(72.850,19.052),(72.850,19.070),(72.830,19.070),(72.830,19.052)]),
+    (3, &quot;East Ward&quot;,       &quot;Commercial&quot;,  18000,
+     [(72.850,19.052),(72.872,19.052),(72.872,19.070),(72.850,19.070),(72.850,19.052)]),
+    (4, &quot;Industrial Zone&quot;, &quot;Industrial&quot;,  5000,
+     [(72.850,19.070),(72.872,19.070),(72.872,19.088),(72.850,19.088),(72.850,19.070)])
+]
+
+for zid, name, ztype, pop, coords in zones_data:
+    feat = QgsFeature()
+    points = [QgsPointXY(x, y) for x, y in coords]
+    feat.setGeometry(QgsGeometry.fromPolygonXY([points]))
+    feat.setAttributes([zid, name, ztype, pop])
+    zone_provider.addFeature(feat)
+
+zone_layer.updateExtents()
+project.addMapLayer(zone_layer)
+
+symbol = QgsFillSymbol.createSimple({
+    &#x27;color&#x27;: &#x27;180,200,255,50&#x27;,
+    &#x27;outline_color&#x27;: &#x27;0,0,150&#x27;,
+    &#x27;outline_width&#x27;: &#x27;0.5&#x27;
+})
+zone_layer.renderer().setSymbol(symbol)
+zone_layer.triggerRepaint()
+
+park_layer = QgsVectorLayer(&quot;Polygon?crs=EPSG:4326&quot;, &quot;Parks&quot;, &quot;memory&quot;)
+park_provider = park_layer.dataProvider()
+park_provider.addAttributes([
+    QgsField(&quot;id&quot;, QVariant.Int),
+    QgsField(&quot;name&quot;, QVariant.String),
+    QgsField(&quot;area_sqm&quot;, QVariant.Double)
+])
+park_layer.updateFields()
+
+parks_data = [
+    (1, &quot;Central Park&quot;,    5200.0,
+     [(72.838,19.074),(72.844,19.074),(72.844,19.079),(72.838,19.079),(72.838,19.074)]),
+    (2, &quot;Riverside Garden&quot;, 3800.0,
+     [(72.833,19.063),(72.838,19.063),(72.838,19.067),(72.833,19.067),(72.833,19.063)]),
+    (3, &quot;Children&#x27;s Park&quot;,  2500.0,
+     [(72.858,19.057),(72.862,19.057),(72.862,19.061),(72.858,19.061),(72.858,19.057)]),
+    (4, &quot;Eco Park&quot;,         4100.0,
+     [(72.855,19.078),(72.860,19.078),(72.860,19.083),(72.855,19.083),(72.855,19.078)])
+]
+
+for pid, name, area, coords in parks_data:
+    feat = QgsFeature()
+    points = [QgsPointXY(x, y) for x, y in coords]
+    feat.setGeometry(QgsGeometry.fromPolygonXY([points]))
+    feat.setAttributes([pid, name, area])
+    park_provider.addFeature(feat)
+
+park_layer.updateExtents()
+project.addMapLayer(park_layer)
+
+symbol = QgsFillSymbol.createSimple({
+    &#x27;color&#x27;: &#x27;100,200,100,130&#x27;,
+    &#x27;outline_color&#x27;: &#x27;0,120,0&#x27;,
+    &#x27;outline_width&#x27;: &#x27;0.4&#x27;
+})
+park_layer.renderer().setSymbol(symbol)
+park_layer.triggerRepaint()
+
+hospital_layer = QgsVectorLayer(&quot;Point?crs=EPSG:4326&quot;, &quot;Hospitals&quot;, &quot;memory&quot;)
+hospital_provider = hospital_layer.dataProvider()
+hospital_provider.addAttributes([
+    QgsField(&quot;id&quot;, QVariant.Int),
+    QgsField(&quot;name&quot;, QVariant.String),
+    QgsField(&quot;beds&quot;, QVariant.Int),
+    QgsField(&quot;type&quot;, QVariant.String)
+])
+hospital_layer.updateFields()
+
+hospitals_data = [
+    (1, &quot;City General Hospital&quot;,  200, &quot;Government&quot;, 72.840, 19.072),
+    (2, &quot;Apollo Hospital&quot;,        150, &quot;Private&quot;,    72.855, 19.065),
+    (3, &quot;Lifeline Clinic&quot;,         50, &quot;Private&quot;,    72.865, 19.075),
+    (4, &quot;District Hospital&quot;,      300, &quot;Government&quot;, 72.835, 19.058),
+    (5, &quot;Care Medical Center&quot;,     80, &quot;Private&quot;,    72.862, 19.082)
+]
+
+for hid, name, beds, htype, x, y in hospitals_data:
+    feat = QgsFeature()
+    feat.setGeometry(QgsGeometry.fromPointXY(QgsPointXY(x, y)))
+    feat.setAttributes([hid, name, beds, htype])
+    hospital_provider.addFeature(feat)
+
+hospital_layer.updateExtents()
+project.addMapLayer(hospital_layer)
+
+symbol = QgsMarkerSymbol.createSimple({
+    &#x27;name&#x27;: &#x27;cross&#x27;,
+    &#x27;color&#x27;: &#x27;220,0,0&#x27;,
+    &#x27;size&#x27;: &#x27;4.5&#x27;,
+    &#x27;outline_color&#x27;: &#x27;150,0,0&#x27;,
+    &#x27;outline_width&#x27;: &#x27;0.5&#x27;
+})
+hospital_layer.renderer().setSymbol(symbol)
+hospital_layer.triggerRepaint()
+
+atm_layer = QgsVectorLayer(&quot;Point?crs=EPSG:4326&quot;, &quot;ATMs&quot;, &quot;memory&quot;)
+atm_provider = atm_layer.dataProvider()
+atm_provider.addAttributes([
+    QgsField(&quot;id&quot;, QVariant.Int),
+    QgsField(&quot;bank_name&quot;, QVariant.String),
+    QgsField(&quot;location&quot;, QVariant.String)
+])
+atm_layer.updateFields()
+
+atms_data = [
+    (1, &quot;SBI&quot;,         &quot;MG Road&quot;,        72.842, 19.070),
+    (2, &quot;HDFC&quot;,        &quot;Station Road&quot;,   72.845, 19.065),
+    (3, &quot;ICICI&quot;,       &quot;Link Road&quot;,      72.848, 19.073),
+    (4, &quot;Axis Bank&quot;,   &quot;Ring Road&quot;,      72.838, 19.082),
+    (5, &quot;Bank of Baroda&quot;, &quot;Industrial Road&quot;, 72.860, 19.068),
+    (6, &quot;PNB&quot;,         &quot;MG Road East&quot;,   72.858, 19.070),
+    (7, &quot;Kotak&quot;,       &quot;South Ward&quot;,     72.840, 19.060)
+]
+
+for aid, bank, loc, x, y in atms_data:
+    feat = QgsFeature()
+    feat.setGeometry(QgsGeometry.fromPointXY(QgsPointXY(x, y)))
+    feat.setAttributes([aid, bank, loc])
+    atm_provider.addFeature(feat)
+
+atm_layer.updateExtents()
+project.addMapLayer(atm_layer)
+
+symbol = QgsMarkerSymbol.createSimple({
+    &#x27;name&#x27;: &#x27;square&#x27;,
+    &#x27;color&#x27;: &#x27;255,200,0&#x27;,
+    &#x27;size&#x27;: &#x27;3.5&#x27;,
+    &#x27;outline_color&#x27;: &#x27;180,130,0&#x27;,
+    &#x27;outline_width&#x27;: &#x27;0.3&#x27;
+})
+atm_layer.renderer().setSymbol(symbol)
+atm_layer.triggerRepaint()
+
+label_layers = [
+    (road_layer, &quot;name&quot;),
+    (river_layer, &quot;name&quot;),
+    (zone_layer, &quot;name&quot;),
+    (park_layer, &quot;name&quot;),
+    (hospital_layer, &quot;name&quot;),
+    (atm_layer, &quot;bank_name&quot;)
+]
+
+for layer, field in label_layers:
+    settings = QgsPalLayerSettings()
+    settings.fieldName = field
+    settings.enabled = True
+    text_format = QgsTextFormat()
+    text_format.setSize(8)
+    buffer = QgsTextBufferSettings()
+    buffer.setEnabled(True)
+    buffer.setSize(1)
+    buffer.setColor(QColor(255, 255, 255))
+    text_format.setBuffer(buffer)
+    settings.setFormat(text_format)
+    labeling = QgsVectorLayerSimpleLabeling(settings)
+    layer.setLabelsEnabled(True)
+    layer.setLabeling(labeling)
+    layer.triggerRepaint()
+
+import os
+
+download_dir = os.path.join(os.path.expanduser(&quot;~&quot;), &quot;Downloads&quot;)
+gpkg_path = os.path.join(download_dir, &quot;vector_data.gpkg&quot;)
+
+print(&quot;\n&quot; + &quot;=&quot; * 65)
+print(&quot;  Preparing Database (GeoPackage)...&quot;)
+print(&quot;=&quot; * 65)
+
+all_layers = {
+    &quot;Roads&quot;: road_layer,
+    &quot;Rivers&quot;: river_layer,
+    &quot;Zones&quot;: zone_layer,
+    &quot;Parks&quot;: park_layer,
+    &quot;Hospitals&quot;: hospital_layer,
+    &quot;ATMs&quot;: atm_layer
+}
+
+for i, (name, layer) in enumerate(all_layers.items()):
+    options = QgsVectorFileWriter.SaveVectorOptions()
+    options.driverName = &quot;GPKG&quot;
+    options.fileEncoding = &quot;UTF-8&quot;
+    options.layerName = name
+
+    if i &gt; 0:
+        options.actionOnExistingFile = QgsVectorFileWriter.CreateOrOverwriteLayer
+
+    error = QgsVectorFileWriter.writeAsVectorFormatV3(
+        layer,
+        gpkg_path,
+        project.transformContext(),
+        options
+    )
+
+    if error[0] == QgsVectorFileWriter.NoError:
+        print(f&quot;  [OK] {name:15s} -&gt; {layer.featureCount()} features saved&quot;)
+    else:
+        print(f&quot;  [FAIL] {name} -&gt; Error: {error[1]}&quot;)
+
+print(f&quot;\n  Database saved: {gpkg_path}&quot;)
+
+canvas = iface.mapCanvas()
+canvas.setExtent(zone_layer.extent())
+canvas.refresh()
+
+print(&quot;\n&quot; + &quot;=&quot; * 65)
+print(&quot;  Q1: Vector Data Creation - COMPLETED SUCCESSFULLY!&quot;)
+print(&quot;=&quot; * 65)
+print(&quot;  LINE LAYERS:&quot;)
+print(f&quot;    1. Roads   : {road_layer.featureCount()} features (id, name, road_type, length_km)&quot;)
+print(f&quot;    2. Rivers  : {river_layer.featureCount()} features (id, name, width_m)&quot;)
+print(&quot;  POLYGON LAYERS:&quot;)
+print(f&quot;    3. Zones   : {zone_layer.featureCount()} features (id, name, zone_type, population)&quot;)
+print(f&quot;    4. Parks   : {park_layer.featureCount()} features (id, name, area_sqm)&quot;)
+print(&quot;  POINT LAYERS:&quot;)
+print(f&quot;    5. Hospitals: {hospital_layer.featureCount()} features (id, name, beds, type)&quot;)
+print(f&quot;    6. ATMs     : {atm_layer.featureCount()} features (id, bank_name, location)&quot;)
+print(f&quot;\n  Database: vector_data.gpkg (GeoPackage with all 6 tables)&quot;)
+print(&quot;  CRS: EPSG:4326 (WGS 84)&quot;)
+print(&quot;=&quot; * 65)
+</pre>
+</body>
+</html>

@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Q6 - Create Dataset</title>
+</head>
+<body>
+    <pre style="font-size:3px;">from qgis.core import *
+from qgis.gui import *
+from PyQt5.QtCore import QVariant
+import os
+
+project = QgsProject.instance()
+
+layer_names = [
+    &quot;Railway_Track&quot;,
+    &quot;Railway_Stations&quot;,
+    &quot;Adjacent_Buildings&quot;,
+    &quot;Roads&quot;,
+    &quot;Localities&quot;,
+    &quot;Landmarks&quot;,
+    &quot;Water_Bodies&quot;
+]
+
+layers = {}
+missing = []
+for name in layer_names:
+    found = project.mapLayersByName(name)
+    if found:
+        layers[name] = found[0]
+    else:
+        missing.append(name)
+
+if missing:
+    print(f&quot;ERROR: Missing layers: {&#x27;, &#x27;.join(missing)}&quot;)
+    print(&quot;Please run Q5_Railway_CST_Chembur_Map.py first!&quot;)
+    raise Exception(&quot;Required layers not found. Run Q5 first.&quot;)
+
+print(&quot;=&quot; * 65)
+print(&quot;  Q2: Creating Datasets for All Layers&quot;)
+print(&quot;=&quot; * 65)
+
+download_dir = os.path.join(os.path.expanduser(&quot;~&quot;), &quot;Downloads&quot;)
+dataset_dir = os.path.join(download_dir, &quot;datasets&quot;)
+
+if not os.path.exists(dataset_dir):
+    os.makedirs(dataset_dir)
+    print(f&quot;\n  Created directory: {dataset_dir}&quot;)
+else:
+    print(f&quot;\n  Output directory: {dataset_dir}&quot;)
+
+print(&quot;\n&quot; + &quot;-&quot; * 65)
+print(&quot;  Exporting Layers as Shapefiles (.shp)&quot;)
+print(&quot;-&quot; * 65)
+
+for name, layer in layers.items():
+    shp_path = os.path.join(dataset_dir, f&quot;{name}.shp&quot;)
+
+    options = QgsVectorFileWriter.SaveVectorOptions()
+    options.driverName = &quot;ESRI Shapefile&quot;
+    options.fileEncoding = &quot;UTF-8&quot;
+
+    error = QgsVectorFileWriter.writeAsVectorFormatV3(
+        layer,
+        shp_path,
+        project.transformContext(),
+        options
+    )
+
+    if error[0] == QgsVectorFileWriter.NoError:
+        print(f&quot;  [OK] {name}.shp  ({layer.featureCount()} features)&quot;)
+    else:
+        print(f&quot;  [FAIL] {name}.shp -&gt; Error: {error[1]}&quot;)
+
+print(&quot;\n&quot; + &quot;-&quot; * 65)
+print(&quot;  Exporting Layers as CSV&quot;)
+print(&quot;-&quot; * 65)
+
+for name, layer in layers.items():
+    csv_path = os.path.join(dataset_dir, f&quot;{name}.csv&quot;)
+
+    options = QgsVectorFileWriter.SaveVectorOptions()
+    options.driverName = &quot;CSV&quot;
+    options.fileEncoding = &quot;UTF-8&quot;
+
+    options.layerOptions = [&quot;GEOMETRY=AS_WKT&quot;]
+
+    error = QgsVectorFileWriter.writeAsVectorFormatV3(
+        layer,
+        csv_path,
+        project.transformContext(),
+        options
+    )
+
+    if error[0] == QgsVectorFileWriter.NoError:
+        print(f&quot;  [OK] {name}.csv  ({layer.featureCount()} records)&quot;)
+    else:
+        print(f&quot;  [FAIL] {name}.csv -&gt; Error: {error[1]}&quot;)
+
+print(&quot;\n&quot; + &quot;-&quot; * 65)
+print(&quot;  Saving QGIS Project File&quot;)
+print(&quot;-&quot; * 65)
+
+project_path = os.path.join(dataset_dir, &quot;CST_Chembur_Railway.qgz&quot;)
+project.write(project_path)
+print(f&quot;  [OK] Project saved: CST_Chembur_Railway.qgz&quot;)
+
+print(&quot;\n&quot; + &quot;=&quot; * 65)
+print(&quot;  Q2: Dataset Creation - COMPLETED SUCCESSFULLY!&quot;)
+print(&quot;=&quot; * 65)
+print(f&quot;\n  Output Location: {dataset_dir}&quot;)
+print(f&quot;\n  Files Created:&quot;)
+print(f&quot;  {&#x27;=&#x27;*50}&quot;)
+
+for name in layer_names:
+    print(f&quot;  Shapefile : {name}.shp (.shx, .dbf, .prj)&quot;)
+    print(f&quot;  CSV       : {name}.csv&quot;)
+
+print(f&quot;  Project   : CST_Chembur_Railway.qgz&quot;)
+print(f&quot;\n  Total Layers Exported: {len(layers)}&quot;)
+print(f&quot;  Formats: Shapefile (.shp) + CSV + QGIS Project (.qgz)&quot;)
+print(&quot;=&quot; * 65)
+</pre>
+</body>
+</html>

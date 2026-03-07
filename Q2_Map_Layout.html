@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Q2 - Map Layout</title>
+</head>
+<body>
+    <pre style="font-size:3px;">from qgis.core import *
+from qgis.gui import *
+from PyQt5.QtGui import QColor, QFont, QImage, QPainter
+from PyQt5.QtCore import QVariant, QRectF, QSizeF, Qt
+import os
+
+project = QgsProject.instance()
+
+areas_list      = project.mapLayersByName(&quot;Areas&quot;)
+gardens_list    = project.mapLayersByName(&quot;Gardens&quot;)
+highways_list   = project.mapLayersByName(&quot;Highways&quot;)
+railways_list   = project.mapLayersByName(&quot;Railway_Tracks&quot;)
+stations_list   = project.mapLayersByName(&quot;Railway_Stations&quot;)
+restaurants_list = project.mapLayersByName(&quot;Restaurants&quot;)
+hospitals_list  = project.mapLayersByName(&quot;Hospitals&quot;)
+buildings_list  = project.mapLayersByName(&quot;Buildings&quot;)
+
+required = [areas_list, gardens_list, highways_list, railways_list,
+            stations_list, restaurants_list, hospitals_list, buildings_list]
+
+if any(not layer_list for layer_list in required):
+    print(&quot;ERROR: Please run Q1_Create_Map.py first to create all layers!&quot;)
+    raise Exception(&quot;Required layers not found. Run Q1 first.&quot;)
+
+areas       = areas_list[0]
+gardens     = gardens_list[0]
+highways    = highways_list[0]
+railways    = railways_list[0]
+stations    = stations_list[0]
+restaurants = restaurants_list[0]
+hospitals   = hospitals_list[0]
+buildings   = buildings_list[0]
+
+print(&quot;=&quot; * 65)
+print(&quot;  Q2: Creating Map Layout with Cartographic Elements&quot;)
+print(&quot;=&quot; * 65)
+
+print(&quot;\n  [Q2.3] Applying Hospital symbol (Red Cross)...&quot;)
+
+svg_symbol = QgsMarkerSymbol()
+sym_layer = QgsSimpleMarkerSymbolLayer()
+sym_layer.setShape(QgsSimpleMarkerSymbolLayer.Cross)
+sym_layer.setColor(QColor(255, 0, 0))
+sym_layer.setStrokeColor(QColor(200, 0, 0))
+sym_layer.setSize(5.0)
+sym_layer.setStrokeWidth(0.8)
+svg_symbol.changeSymbolLayer(0, sym_layer)
+hospitals.renderer().setSymbol(svg_symbol)
+hospitals.triggerRepaint()
+print(&quot;  -&gt; Hospitals now displayed with RED CROSS symbol&quot;)
+
+print(&quot;\n  [Q2.4] Applying Metro symbol to Andheri station...&quot;)
+
+categories = []
+
+metro_symbol = QgsMarkerSymbol()
+metro_layer = QgsSimpleMarkerSymbolLayer()
+metro_layer.setShape(QgsSimpleMarkerSymbolLayer.Circle)
+metro_layer.setColor(QColor(0, 100, 200))
+metro_layer.setStrokeColor(QColor(0, 50, 150))
+metro_layer.setSize(6.0)
+metro_layer.setStrokeWidth(0.5)
+metro_symbol.changeSymbolLayer(0, metro_layer)
+
+font_layer = QgsFontMarkerSymbolLayer()
+font_layer.setFontFamily(&quot;Arial&quot;)
+font_layer.setCharacter(&quot;M&quot;)
+font_layer.setSize(3.5)
+font_layer.setColor(QColor(255, 255, 255))
+metro_symbol.appendSymbolLayer(font_layer)
+
+cat_metro = QgsRendererCategory(&quot;Andheri&quot;, metro_symbol, &quot;Metro Station (Andheri)&quot;)
+categories.append(cat_metro)
+
+for feat in stations.getFeatures():
+    sname = feat[&#x27;name&#x27;]
+    if sname != &quot;Andheri&quot;:
+        default_symbol = QgsMarkerSymbol.createSimple({
+            &#x27;name&#x27;: &#x27;square&#x27;,
+            &#x27;color&#x27;: &#x27;30,30,30&#x27;,
+            &#x27;size&#x27;: &#x27;3&#x27;
+        })
+        cat = QgsRendererCategory(sname, default_symbol, sname)
+        categories.append(cat)
+
+categorized_renderer = QgsCategorizedSymbolRenderer(&quot;name&quot;, categories)
+stations.setRenderer(categorized_renderer)
+stations.triggerRepaint()
+print(&quot;  -&gt; Andheri station now has METRO symbol (Blue circle with M)&quot;)
+
+iface.mapCanvas().refresh()
+
+print(&quot;\n  Creating Print Layout...&quot;)
+
+manager = project.layoutManager()
+existing = manager.layoutByName(&quot;GIS_Practical_Map&quot;)
+if existing:
+    manager.removeLayout(existing)
+
+layout = QgsPrintLayout(project)
+layout.initializeDefaults()
+layout.setName(&quot;GIS_Practical_Map&quot;)
+
+page = layout.pageCollection().page(0)
+page.setPageSize(QgsLayoutSize(420, 297, QgsUnitTypes.LayoutMillimeters))
+
+map_item = QgsLayoutItemMap(layout)
+map_item.setRect(QRectF(0, 0, 370, 250))
+map_item.attemptMove(QgsLayoutPoint(10, 35, QgsUnitTypes.LayoutMillimeters))
+map_item.attemptResize(QgsLayoutSize(370, 250, QgsUnitTypes.LayoutMillimeters))
+map_item.setExtent(areas.extent())
+map_item.setFrameEnabled(True)
+map_item.setFrameStrokeWidth(QgsLayoutMeasurement(0.5, QgsUnitTypes.LayoutMillimeters))
+layout.addLayoutItem(map_item)
+
+title = QgsLayoutItemLabel(layout)
+title.setText(&quot;Residential Area Map - Mumbai (Andheri-Goregaon)&quot;)
+title.setFont(QFont(&quot;Arial&quot;, 18, QFont.Bold))
+title.adjustSizeToText()
+title.attemptMove(QgsLayoutPoint(10, 5, QgsUnitTypes.LayoutMillimeters))
+title.attemptResize(QgsLayoutSize(370, 15, QgsUnitTypes.LayoutMillimeters))
+title.setHAlign(Qt.AlignCenter)
+layout.addLayoutItem(title)
+
+subtitle = QgsLayoutItemLabel(layout)
+subtitle.setText(&quot;T.Y. B.Sc. IT - Fundamentals of GIS | University of Mumbai&quot;)
+subtitle.setFont(QFont(&quot;Arial&quot;, 10))
+subtitle.adjustSizeToText()
+subtitle.attemptMove(QgsLayoutPoint(10, 22, QgsUnitTypes.LayoutMillimeters))
+subtitle.attemptResize(QgsLayoutSize(370, 10, QgsUnitTypes.LayoutMillimeters))
+subtitle.setHAlign(Qt.AlignCenter)
+layout.addLayoutItem(subtitle)
+
+print(&quot;  [Q2.1] Adding North Arrow...&quot;)
+
+north_arrow = QgsLayoutItemPicture(layout)
+north_arrow.attemptMove(QgsLayoutPoint(385, 35, QgsUnitTypes.LayoutMillimeters))
+north_arrow.attemptResize(QgsLayoutSize(25, 40, QgsUnitTypes.LayoutMillimeters))
+
+import glob
+qgis_path = QgsApplication.pkgDataPath()
+svg_paths = glob.glob(os.path.join(qgis_path, &quot;svg&quot;, &quot;arrows&quot;, &quot;NorthArrow_*.svg&quot;))
+if svg_paths:
+    north_arrow.setPicturePath(svg_paths[0])
+    print(f&quot;  -&gt; North Arrow SVG: {os.path.basename(svg_paths[0])}&quot;)
+else:
+
+    svg_paths2 = glob.glob(os.path.join(qgis_path, &quot;svg&quot;, &quot;**&quot;, &quot;north*&quot;), recursive=True)
+    if svg_paths2:
+        north_arrow.setPicturePath(svg_paths2[0])
+    else:
+
+        north_arrow.setNorthMode(QgsLayoutItemPicture.GridNorth)
+
+north_arrow.setFrameEnabled(True)
+layout.addLayoutItem(north_arrow)
+print(&quot;  -&gt; North Arrow added to layout&quot;)
+
+print(&quot;  [Q2.2] Adding Legend...&quot;)
+
+legend = QgsLayoutItemLegend(layout)
+legend.setLinkedMap(map_item)
+legend.setTitle(&quot;Map Legend&quot;)
+legend.setFrameEnabled(True)
+legend.setBackgroundEnabled(True)
+legend.setBackgroundColor(QColor(255, 255, 255, 220))
+legend.attemptMove(QgsLayoutPoint(385, 80, QgsUnitTypes.LayoutMillimeters))
+legend.attemptResize(QgsLayoutSize(30, 80, QgsUnitTypes.LayoutMillimeters))
+
+legend.setAutoUpdateModel(True)
+
+layout.addLayoutItem(legend)
+print(&quot;  -&gt; Legend added to layout&quot;)
+
+print(&quot;  [Q2.2] Adding Scale Bar...&quot;)
+
+scalebar = QgsLayoutItemScaleBar(layout)
+scalebar.setLinkedMap(map_item)
+scalebar.setStyle(&#x27;Single Box&#x27;)
+scalebar.setUnits(QgsUnitTypes.DistanceKilometers)
+scalebar.setNumberOfSegments(4)
+scalebar.setNumberOfSegmentsLeft(0)
+scalebar.setUnitsPerSegment(0.5)
+scalebar.setFont(QFont(&quot;Arial&quot;, 8))
+scalebar.setFrameEnabled(False)
+scalebar.attemptMove(QgsLayoutPoint(15, 270, QgsUnitTypes.LayoutMillimeters))
+layout.addLayoutItem(scalebar)
+print(&quot;  -&gt; Scale Bar added to layout&quot;)
+
+print(&quot;\n  [Q2.5] Exporting map to JPEG at 1500 DPI...&quot;)
+
+exporter = QgsLayoutExporter(layout)
+settings = QgsLayoutExporter.ImageExportSettings()
+settings.dpi = 1500
+
+download_dir = os.path.join(os.path.expanduser(&quot;~&quot;), &quot;Downloads&quot;)
+output_path = os.path.join(download_dir, &quot;Residential_Area_Map_1500dpi.jpg&quot;)
+
+result = exporter.exportToImage(output_path, settings)
+
+if result == QgsLayoutExporter.Success:
+    print(f&quot;  -&gt; Map exported successfully!&quot;)
+    print(f&quot;  -&gt; File: {output_path}&quot;)
+    print(f&quot;  -&gt; Resolution: 1500 DPI&quot;)
+    print(f&quot;  -&gt; Format: JPEG&quot;)
+else:
+    print(f&quot;  -&gt; Export result code: {result}&quot;)
+    print(&quot;  -&gt; You can manually export from: Layout Manager &gt; Export as Image&quot;)
+
+manager.addLayout(layout)
+print(&quot;  -&gt; Layout &#x27;GIS_Practical_Map&#x27; added to Layout Manager&quot;)
+
+print(&quot;\n&quot; + &quot;=&quot; * 65)
+print(&quot;  Q2: MAP LAYOUT CREATED SUCCESSFULLY!&quot;)
+print(&quot;=&quot; * 65)
+print(\
+   )
+print(&quot;=&quot; * 65)
+</pre>
+</body>
+</html>

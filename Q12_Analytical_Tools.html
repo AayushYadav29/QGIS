@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Q12 - Analytical Tools</title>
+</head>
+<body>
+    <pre style="font-size:3px;">from qgis.core import *
+from qgis.gui import *
+from PyQt5.QtGui import QColor
+from PyQt5.QtCore import QVariant
+import processing
+import os
+
+project = QgsProject.instance()
+
+hospitals_list = project.mapLayersByName(&quot;Hospitals&quot;)
+atms_list      = project.mapLayersByName(&quot;ATMs&quot;)
+zones_list     = project.mapLayersByName(&quot;Zones&quot;)
+parks_list     = project.mapLayersByName(&quot;Parks&quot;)
+
+if not hospitals_list or not atms_list or not zones_list or not parks_list:
+    print(&quot;ERROR: Please run Q7_Create_Vector_Data.py first to create all layers!&quot;)
+    raise Exception(&quot;Required layers not found. Run Q7 first.&quot;)
+
+hospitals = hospitals_list[0]
+atms      = atms_list[0]
+zones     = zones_list[0]
+parks     = parks_list[0]
+
+download_dir = os.path.join(os.path.expanduser(&quot;~&quot;), &quot;Downloads&quot;)
+
+print(&quot;=&quot; * 65)
+print(&quot;  Q2: Analytical Tools Demonstration - RESULTS&quot;)
+print(&quot;=&quot; * 65)
+
+print(&quot;\n&quot; + &quot;-&quot; * 65)
+print(&quot;  TOOL 1: Distance Matrix (Hospitals -&gt; ATMs)&quot;)
+print(&quot;-&quot; * 65)
+print(&quot;  Computing distance from each Hospital to nearest ATMs...\n&quot;)
+
+output_csv = os.path.join(download_dir, &quot;distance_matrix_output.csv&quot;)
+
+try:
+    result = processing.run(&quot;qgis:distancematrix&quot;, {
+        &#x27;INPUT&#x27;: hospitals,
+        &#x27;INPUT_FIELD&#x27;: &#x27;name&#x27;,
+        &#x27;TARGET&#x27;: atms,
+        &#x27;TARGET_FIELD&#x27;: &#x27;bank_name&#x27;,
+        &#x27;MATRIX_TYPE&#x27;: 0,
+        &#x27;NEAREST_POINTS&#x27;: 3,
+        &#x27;OUTPUT&#x27;: output_csv
+    })
+    print(f&quot;  [OK] Distance matrix saved: distance_matrix_output.csv&quot;)
+
+    dm_layer = QgsVectorLayer(output_csv, &quot;Distance_Matrix_Result&quot;, &quot;ogr&quot;)
+    if dm_layer.isValid():
+        project.addMapLayer(dm_layer)
+
+        for feat in dm_layer.getFeatures():
+            fields = feat.fields()
+            values = feat.attributes()
+            input_name = values[0]
+            target_name = values[1]
+            distance = values[2]
+            print(f&quot;  {input_name:30s} -&gt; {target_name:15s} : {distance:10.2f} meters&quot;)
+    else:
+        print(&quot;  [INFO] Result layer not loadable, see CSV file for data.&quot;)
+
+except Exception as e:
+    print(f&quot;  [NOTE] Processing algorithm returned: {e}&quot;)
+    print(&quot;  Calculating distances manually...\n&quot;)
+
+print(&quot;\n  --- Manual Distance Calculation ---&quot;)
+
+d = QgsDistanceArea()
+d.setEllipsoid(&#x27;WGS84&#x27;)
+d.setSourceCrs(hospitals.crs(), project.transformContext())
+
+hospital_features = list(hospitals.getFeatures())
+atm_features = list(atms.getFeatures())
+
+for h_feat in hospital_features:
+    h_point = h_feat.geometry().asPoint()
+    h_name = h_feat[&#x27;name&#x27;]
+
+    distances = []
+    for a_feat in atm_features:
+        a_point = a_feat.geometry().asPoint()
+        a_name = a_feat[&#x27;bank_name&#x27;]
+        dist = d.measureLine(QgsPointXY(h_point), QgsPointXY(a_point))
+        distances.append((a_name, dist))
+
+    distances.sort(key=lambda x: x[1])
+
+    print(f&quot;\n  Hospital: {h_name}&quot;)
+    print(f&quot;  {&#x27;ATM&#x27;:&lt;20s} {&#x27;Distance (m)&#x27;:&gt;15s}&quot;)
+    print(f&quot;  {&#x27;-&#x27;*20} {&#x27;-&#x27;*15}&quot;)
+    for atm_name, dist in distances[:3]:
+        print(f&quot;  {atm_name:&lt;20s} {dist:&gt;15.2f}&quot;)
+
+print(&quot;\n\n&quot; + &quot;-&quot; * 65)
+print(&quot;  TOOL 2: Points in Polygon (Count Points in Zones)&quot;)
+print(&quot;-&quot; * 65)
+
+print(&quot;\n  A) Hospitals in each Zone:&quot;)
+
+try:
+    hosp_output = os.path.join(download_dir, &quot;hospitals_in_zones.shp&quot;)
+    result = processing.run(&quot;native:countpointsinpolygon&quot;, {
+        &#x27;POLYGONS&#x27;: zones,
+        &#x27;POINTS&#x27;: hospitals,
+        &#x27;WEIGHT&#x27;: &#x27;&#x27;,
+        &#x27;CLASSFIELD&#x27;: &#x27;&#x27;,
+        &#x27;FIELD&#x27;: &#x27;HOSP_COUNT&#x27;,
+        &#x27;OUTPUT&#x27;: hosp_output
+    })
+
+    hosp_result_layer = QgsVectorLayer(hosp_output, &quot;Hospitals_in_Zones&quot;, &quot;ogr&quot;)
+    if hosp_result_layer.isValid():
+        project.addMapLayer(hosp_result_layer)
+        for feat in hosp_result_layer.getFeatures():
+            print(f&quot;  Zone: {feat[&#x27;name&#x27;]:20s} -&gt; Hospitals: {feat[&#x27;HOSP_COUNT&#x27;]}&quot;)
+    print(f&quot;  [OK] Output saved: hospitals_in_zones.shp&quot;)
+
+except Exception as e:
+    print(f&quot;  [NOTE] Processing returned: {e}&quot;)
+
+print(&quot;\n  B) ATMs in each Zone:&quot;)
+
+try:
+    atm_output = os.path.join(download_dir, &quot;atms_in_zones.shp&quot;)
+    result = processing.run(&quot;native:countpointsinpolygon&quot;, {
+        &#x27;POLYGONS&#x27;: zones,
+        &#x27;POINTS&#x27;: atms,
+        &#x27;WEIGHT&#x27;: &#x27;&#x27;,
+        &#x27;CLASSFIELD&#x27;: &#x27;&#x27;,
+        &#x27;FIELD&#x27;: &#x27;ATM_COUNT&#x27;,
+        &#x27;OUTPUT&#x27;: atm_output
+    })
+
+    atm_result_layer = QgsVectorLayer(atm_output, &quot;ATMs_in_Zones&quot;, &quot;ogr&quot;)
+    if atm_result_layer.isValid():
+        project.addMapLayer(atm_result_layer)
+        for feat in atm_result_layer.getFeatures():
+            print(f&quot;  Zone: {feat[&#x27;name&#x27;]:20s} -&gt; ATMs: {feat[&#x27;ATM_COUNT&#x27;]}&quot;)
+    print(f&quot;  [OK] Output saved: atms_in_zones.shp&quot;)
+
+except Exception as e:
+    print(f&quot;  [NOTE] Processing returned: {e}&quot;)
+
+print(&quot;\n  --- Manual Points-in-Polygon Count ---&quot;)
+
+print(f&quot;\n  {&#x27;Zone&#x27;:&lt;20s} {&#x27;Hospitals&#x27;:&gt;10s} {&#x27;ATMs&#x27;:&gt;10s}&quot;)
+print(f&quot;  {&#x27;-&#x27;*20} {&#x27;-&#x27;*10} {&#x27;-&#x27;*10}&quot;)
+
+for zone_feat in zones.getFeatures():
+    zone_geom = zone_feat.geometry()
+    zone_name = zone_feat[&#x27;name&#x27;]
+
+    hosp_count = 0
+    for h_feat in hospital_features:
+        if zone_geom.contains(h_feat.geometry()):
+            hosp_count += 1
+
+    atm_count = 0
+    for a_feat in atm_features:
+        if zone_geom.contains(a_feat.geometry()):
+            atm_count += 1
+
+    print(f&quot;  {zone_name:&lt;20s} {hosp_count:&gt;10d} {atm_count:&gt;10d}&quot;)
+
+print(f&quot;\n  {&#x27;Park&#x27;:&lt;20s} {&#x27;Hospitals&#x27;:&gt;10s} {&#x27;ATMs&#x27;:&gt;10s}&quot;)
+print(f&quot;  {&#x27;-&#x27;*20} {&#x27;-&#x27;*10} {&#x27;-&#x27;*10}&quot;)
+
+for park_feat in parks.getFeatures():
+    park_geom = park_feat.geometry()
+    park_name = park_feat[&#x27;name&#x27;]
+
+    hosp_count = sum(1 for h in hospital_features if park_geom.contains(h.geometry()))
+    atm_count = sum(1 for a in atm_features if park_geom.contains(a.geometry()))
+
+    print(f&quot;  {park_name:&lt;20s} {hosp_count:&gt;10d} {atm_count:&gt;10d}&quot;)
+
+print(&quot;\n&quot; + &quot;=&quot; * 65)
+print(&quot;  Q2: Analytical Tools Demonstration - COMPLETED!&quot;)
+print(&quot;=&quot; * 65)
+print(&quot;  Tool 1: Distance Matrix&quot;)
+print(&quot;    -&gt; Calculated distance from each Hospital to nearest 3 ATMs&quot;)
+print(&quot;    -&gt; Output: distance_matrix_output.csv&quot;)
+print(&quot;  Tool 2: Points in Polygon&quot;)
+print(&quot;    -&gt; Counted Hospitals &amp; ATMs in each Zone and Park&quot;)
+print(&quot;    -&gt; Output: hospitals_in_zones.shp, atms_in_zones.shp&quot;)
+print(&quot;=&quot; * 65)
+</pre>
+</body>
+</html>

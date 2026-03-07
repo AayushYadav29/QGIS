@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Q8 - Map Layout Labels</title>
+</head>
+<body>
+    <pre style="font-size:3px;">from qgis.core import *
+from qgis.gui import *
+from PyQt5.QtGui import QColor, QFont
+from PyQt5.QtCore import QVariant, QRectF, QSizeF
+import os
+
+project = QgsProject.instance()
+download_dir = os.path.join(os.path.expanduser(&quot;~&quot;), &quot;Downloads&quot;)
+
+colleges_list    = project.mapLayersByName(&quot;Colleges&quot;)
+restaurants_list = project.mapLayersByName(&quot;Restaurants&quot;)
+hospitals_list   = project.mapLayersByName(&quot;Hospitals&quot;)
+roads_list       = project.mapLayersByName(&quot;Roads&quot;)
+railways_list    = project.mapLayersByName(&quot;Railway_Tracks&quot;)
+
+required = [colleges_list, restaurants_list, hospitals_list, roads_list, railways_list]
+
+if any(not l for l in required):
+    print(&quot;ERROR: Please run Q11_Vector_Points_Map.py first!&quot;)
+    raise Exception(&quot;Required layers not found. Run Q11 first.&quot;)
+
+colleges    = colleges_list[0]
+restaurants = restaurants_list[0]
+hospitals   = hospitals_list[0]
+roads       = roads_list[0]
+railways    = railways_list[0]
+
+all_layers = [colleges, restaurants, hospitals, roads, railways]
+
+print(&quot;=&quot; * 65)
+print(&quot;  Q2: Creating Map Layout with Labels, Legend, Scale &amp; Title&quot;)
+print(&quot;=&quot; * 65)
+
+print(&quot;\n  [Q2.1] Adding/Verifying Labels on all layers...&quot;)
+
+label_configs = [
+    (colleges, &quot;name&quot;),
+    (restaurants, &quot;name&quot;),
+    (hospitals, &quot;name&quot;),
+    (roads, &quot;name&quot;),
+    (railways, &quot;name&quot;)
+]
+
+for layer, field in label_configs:
+    settings = QgsPalLayerSettings()
+    settings.fieldName = field
+    settings.enabled = True
+
+    text_format = QgsTextFormat()
+    text_format.setSize(8)
+    text_format.setColor(QColor(0, 0, 0))
+
+    buf = QgsTextBufferSettings()
+    buf.setEnabled(True)
+    buf.setSize(1.2)
+    buf.setColor(QColor(255, 255, 255))
+    text_format.setBuffer(buf)
+
+    settings.setFormat(text_format)
+    labeling = QgsVectorLayerSimpleLabeling(settings)
+    layer.setLabelsEnabled(True)
+    layer.setLabeling(labeling)
+    layer.triggerRepaint()
+    print(f&quot;    Labels ON: {layer.name()} (field: &#x27;{field}&#x27;)&quot;)
+
+iface.mapCanvas().refresh()
+
+layout_name = &quot;LocationMap_Layout&quot;
+
+manager = project.layoutManager()
+existing = manager.layoutByName(layout_name)
+if existing:
+    manager.removeLayout(existing)
+
+layout = QgsPrintLayout(project)
+layout.initializeDefaults()
+layout.setName(layout_name)
+manager.addLayout(layout)
+
+map_item = QgsLayoutItemMap(layout)
+map_item.setRect(20, 20, 200, 250)
+map_item.setExtent(iface.mapCanvas().extent())
+map_item.setCrs(QgsCoordinateReferenceSystem(&quot;EPSG:4326&quot;))
+layout.addLayoutItem(map_item)
+map_item.attemptMove(QgsLayoutPoint(15, 35, QgsUnitTypes.LayoutMillimeters))
+map_item.attemptResize(QgsLayoutSize(175, 210, QgsUnitTypes.LayoutMillimeters))
+
+print(&quot;\n  Map item added to layout&quot;)
+
+print(&quot;\n  [Q2.4] Adding Title with proper formatting...&quot;)
+
+title = QgsLayoutItemLabel(layout)
+title.setText(&quot;Mumbai - Colleges, Restaurants &amp; Hospitals Map&quot;)
+title.setFont(QFont(&quot;Arial&quot;, 18, QFont.Bold))
+title.setFontColor(QColor(0, 50, 120))
+title.setHAlign(Qt.AlignCenter)
+title.adjustSizeToText()
+layout.addLayoutItem(title)
+title.attemptMove(QgsLayoutPoint(15, 5, QgsUnitTypes.LayoutMillimeters))
+title.attemptResize(QgsLayoutSize(175, 15, QgsUnitTypes.LayoutMillimeters))
+print(&quot;    Title: &#x27;Mumbai - Colleges, Restaurants &amp; Hospitals Map&#x27;&quot;)
+print(&quot;    Font: Arial 18pt Bold, Color: Dark Blue&quot;)
+
+subtitle = QgsLayoutItemLabel(layout)
+subtitle.setText(&quot;GIS Practical Examination | CRS: WGS 84 (EPSG:4326)&quot;)
+subtitle.setFont(QFont(&quot;Arial&quot;, 9))
+subtitle.setFontColor(QColor(80, 80, 80))
+subtitle.setHAlign(Qt.AlignCenter)
+subtitle.adjustSizeToText()
+layout.addLayoutItem(subtitle)
+subtitle.attemptMove(QgsLayoutPoint(15, 22, QgsUnitTypes.LayoutMillimeters))
+subtitle.attemptResize(QgsLayoutSize(175, 10, QgsUnitTypes.LayoutMillimeters))
+print(&quot;    Subtitle added with CRS info&quot;)
+
+print(&quot;\n  [Q2.2] Adding Legend...&quot;)
+
+legend = QgsLayoutItemLegend(layout)
+legend.setTitle(&quot;Map Legend&quot;)
+legend.setLinkedMap(map_item)
+legend.setStyleFont(QgsLegendStyle.Title, QFont(&quot;Arial&quot;, 11, QFont.Bold))
+legend.setStyleFont(QgsLegendStyle.Subgroup, QFont(&quot;Arial&quot;, 9, QFont.Bold))
+legend.setStyleFont(QgsLegendStyle.SymbolLabel, QFont(&quot;Arial&quot;, 8))
+layout.addLayoutItem(legend)
+legend.attemptMove(QgsLayoutPoint(195, 35, QgsUnitTypes.LayoutMillimeters))
+print(&quot;    Legend added with styled fonts&quot;)
+
+print(&quot;\n  [Q2.3] Adding Scale Bar...&quot;)
+
+scalebar = QgsLayoutItemScaleBar(layout)
+scalebar.setStyle(&#x27;Single Box&#x27;)
+scalebar.setLinkedMap(map_item)
+scalebar.setMapUnitsPerScaleBarUnit(1000)
+scalebar.setNumberOfSegments(4)
+scalebar.setNumberOfSegmentsLeft(0)
+scalebar.setUnitsPerSegment(1)
+scalebar.setUnitLabel(&quot;km&quot;)
+scalebar.setFont(QFont(&quot;Arial&quot;, 8))
+layout.addLayoutItem(scalebar)
+scalebar.attemptMove(QgsLayoutPoint(15, 250, QgsUnitTypes.LayoutMillimeters))
+print(&quot;    Scale Bar: Single Box, 4 segments, km units&quot;)
+
+north = QgsLayoutItemLabel(layout)
+north.setText(&quot;N\n▲&quot;)
+north.setFont(QFont(&quot;Arial&quot;, 16, QFont.Bold))
+north.setFontColor(QColor(0, 0, 0))
+north.setHAlign(Qt.AlignCenter)
+north.adjustSizeToText()
+layout.addLayoutItem(north)
+north.attemptMove(QgsLayoutPoint(195, 220, QgsUnitTypes.LayoutMillimeters))
+print(&quot;    North Arrow added&quot;)
+
+footer = QgsLayoutItemLabel(layout)
+footer.setText(&quot;Prepared for: T.Y. B.Sc. IT - Semester VI | University of Mumbai&quot;)
+footer.setFont(QFont(&quot;Arial&quot;, 7))
+footer.setFontColor(QColor(120, 120, 120))
+footer.setHAlign(Qt.AlignCenter)
+footer.adjustSizeToText()
+layout.addLayoutItem(footer)
+footer.attemptMove(QgsLayoutPoint(15, 265, QgsUnitTypes.LayoutMillimeters))
+footer.attemptResize(QgsLayoutSize(175, 8, QgsUnitTypes.LayoutMillimeters))
+
+output_path = os.path.join(download_dir, &quot;Location_Map_Output.jpg&quot;)
+
+exporter = QgsLayoutExporter(layout)
+settings = QgsLayoutExporter.ImageExportSettings()
+settings.dpi = 300
+
+result = exporter.exportToImage(output_path, settings)
+
+if result == QgsLayoutExporter.Success:
+    print(f&quot;\n  Map exported: Location_Map_Output.jpg (300 dpi)&quot;)
+else:
+    print(f&quot;\n  Export status code: {result}&quot;)
+
+print(&quot;\n&quot; + &quot;=&quot; * 65)
+print(&quot;  Q2: Map Layout - COMPLETED SUCCESSFULLY!&quot;)
+print(&quot;=&quot; * 65)
+print(&quot;  1. Labels   : Enabled on all 5 layers (name field)&quot;)
+print(&quot;  2. Legend    : Added with styled fonts (Title, Groups, Symbols)&quot;)
+print(&quot;  3. Scale Bar : Single Box, 4 segments, km units&quot;)
+print(&quot;  4. Title     : &#x27;Mumbai - Colleges, Restaurants &amp; Hospitals Map&#x27;&quot;)
+print(&quot;                 Arial 18pt Bold, Dark Blue, centered&quot;)
+print(f&quot;\n  Output: Location_Map_Output.jpg&quot;)
+print(f&quot;  Layout: {layout_name}&quot;)
+print(&quot;  Open via: Project &gt; Layouts &gt; LocationMap_Layout&quot;)
+print(&quot;=&quot; * 65)
+</pre>
+</body>
+</html>

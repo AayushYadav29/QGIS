@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Q4 - Farm Spatial Queries</title>
+</head>
+<body>
+    <pre style="font-size:3px;">from qgis.core import *
+from qgis.gui import *
+from PyQt5.QtGui import QColor
+from PyQt5.QtCore import QVariant
+
+project = QgsProject.instance()
+
+farms_list    = project.mapLayersByName(&quot;Farms&quot;)
+wells_list    = project.mapLayersByName(&quot;Wells&quot;)
+paths_list    = project.mapLayersByName(&quot;Paths&quot;)
+highway_list  = project.mapLayersByName(&quot;Highway&quot;)
+
+required = [farms_list, wells_list, paths_list, highway_list]
+
+if any(not layer_list for layer_list in required):
+    print(&quot;ERROR: Please run Q3_Create_Farm_Map.py first to create all layers!&quot;)
+    raise Exception(&quot;Required layers not found. Run Q3_Create_Farm_Map.py first.&quot;)
+
+farms   = farms_list[0]
+wells   = wells_list[0]
+paths   = paths_list[0]
+highway = highway_list[0]
+
+print(&quot;=&quot; * 65)
+print(&quot;  Q2: Spatial Queries on Farm Map - RESULTS&quot;)
+print(&quot;=&quot; * 65)
+
+print(&quot;\n&quot; + &quot;-&quot; * 65)
+print(&quot;  Q2.1: Farms That Contain a Well&quot;)
+print(&quot;-&quot; * 65)
+
+farm_features = []
+for feat in farms.getFeatures():
+    farm_features.append(feat)
+
+farms_with_wells = set()
+for well_feat in wells.getFeatures():
+    well_geom = well_feat.geometry()
+    for farm_feat in farm_features:
+        farm_geom = farm_feat.geometry()
+        if farm_geom.contains(well_geom):
+            farms_with_wells.add(farm_feat.id())
+            print(f&quot;  FOUND: Well &#x27;{well_feat[&#x27;location&#x27;]}&#x27; (ID: {well_feat[&#x27;id&#x27;]}) &quot;
+                  f&quot;is inside Farm &#x27;{farm_feat[&#x27;own_name&#x27;]}&#x27; (ID: {farm_feat[&#x27;id&#x27;]})&quot;)
+
+if not farms_with_wells:
+    print(&quot;  No farms contain wells.&quot;)
+else:
+
+    farms.removeSelection()
+    farms.select(list(farms_with_wells))
+    iface.setActiveLayer(farms)
+    iface.mapCanvas().refresh()
+    print(f&quot;\n  [Total: {len(farms_with_wells)} farm(s) contain wells]&quot;)
+    print(&quot;  [Farms with wells are now SELECTED/HIGHLIGHTED on the map]&quot;)
+
+print(&quot;\n&quot; + &quot;-&quot; * 65)
+print(&quot;  Q2.2: Calculate Area of Each Farm &amp; Show Largest Farm&quot;)
+print(&quot;-&quot; * 65)
+
+field_names = [field.name() for field in farms.fields()]
+if &quot;Farm_area&quot; not in field_names:
+    farms.startEditing()
+    farms.dataProvider().addAttributes([QgsField(&quot;Farm_area&quot;, QVariant.Double)])
+    farms.updateFields()
+    farms.commitChanges()
+
+d = QgsDistanceArea()
+d.setEllipsoid(&#x27;WGS84&#x27;)
+d.setSourceCrs(farms.crs(), project.transformContext())
+
+farms.startEditing()
+area_idx = farms.fields().indexOf(&quot;Farm_area&quot;)
+
+max_area = 0
+largest_farm_name = &quot;&quot;
+largest_farm_id = None
+
+for feat in farms.getFeatures():
+    area = d.measureArea(feat.geometry())
+    area_sq_m = d.convertAreaMeasurement(area, QgsUnitTypes.AreaSquareMeters)
+    farms.changeAttributeValue(feat.id(), area_idx, round(area_sq_m, 2))
+    print(f&quot;  Farm ID {feat[&#x27;id&#x27;]}: {feat[&#x27;own_name&#x27;]:20s} -&gt; Area = {round(area_sq_m, 2):&gt;12.2f} sq meters&quot;)
+
+    if area_sq_m &gt; max_area:
+        max_area = area_sq_m
+        largest_farm_name = feat[&#x27;own_name&#x27;]
+        largest_farm_id = feat.id()
+
+farms.commitChanges()
+print(f&quot;\n  [Farm_area column added and populated successfully]&quot;)
+
+print(f&quot;\n  ** LARGEST FARM: {largest_farm_name} **&quot;)
+print(f&quot;     Area: {max_area:.2f} sq meters&quot;)
+
+farms.removeSelection()
+farms.select(largest_farm_id)
+iface.setActiveLayer(farms)
+iface.mapCanvas().refresh()
+print(&quot;  [Largest farm is now SELECTED/HIGHLIGHTED on the map]&quot;)
+
+print(&quot;\n&quot; + &quot;-&quot; * 65)
+print(&quot;  Q2.3: Paths That Intersect with Highway&quot;)
+print(&quot;-&quot; * 65)
+
+highway_geoms = []
+for feat in highway.getFeatures():
+    highway_geoms.append((feat.geometry(), feat[&#x27;id&#x27;]))
+
+intersecting_path_ids = []
+for path_feat in paths.getFeatures():
+    path_geom = path_feat.geometry()
+    for hw_geom, hw_id in highway_geoms:
+        if path_geom.intersects(hw_geom):
+            intersecting_path_ids.append(path_feat.id())
+            print(f&quot;  INTERSECTS: Path ID {path_feat[&#x27;id&#x27;]} intersects Highway &#x27;{hw_id}&#x27;&quot;)
+
+if not intersecting_path_ids:
+    print(&quot;  No paths intersect with the highway.&quot;)
+else:
+
+    paths.removeSelection()
+    paths.select(intersecting_path_ids)
+    iface.setActiveLayer(paths)
+    iface.mapCanvas().refresh()
+    print(f&quot;\n  [Total: {len(intersecting_path_ids)} path(s) intersect with highway]&quot;)
+    print(&quot;  [Intersecting paths are now SELECTED/HIGHLIGHTED on the map]&quot;)
+
+print(&quot;\n&quot; + &quot;=&quot; * 65)
+print(&quot;  Q2: All Spatial Queries Executed Successfully!&quot;)
+print(&quot;=&quot; * 65)
+</pre>
+</body>
+</html>

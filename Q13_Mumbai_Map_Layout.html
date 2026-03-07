@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Q13 - Mumbai Map Layout</title>
+</head>
+<body>
+    <pre style="font-size:3px;">from qgis.core import *
+from qgis.gui import *
+from PyQt5.QtGui import QColor, QFont, QImage, QPainter
+from PyQt5.QtCore import QVariant, QRectF, QSizeF, Qt
+import os, csv
+
+project = QgsProject.instance()
+download_dir = os.path.join(os.path.expanduser(&quot;~&quot;), &quot;Downloads&quot;)
+
+project.setTitle(&quot;Mumbai City Map - GIS Practical&quot;)
+print(&quot;=&quot; * 65)
+print(&quot;  Q1: Mumbai Map - Creating Layers &amp; Layout&quot;)
+print(&quot;=&quot; * 65)
+
+crs = QgsCoordinateReferenceSystem(&quot;EPSG:4326&quot;)
+project.setCrs(crs)
+print(f&quot;\n  [Q1.1] CRS set to: {crs.authid()} ({crs.description()})&quot;)
+
+area_layer = QgsVectorLayer(&quot;Polygon?crs=EPSG:4326&quot;, &quot;Mumbai_Areas&quot;, &quot;memory&quot;)
+area_prov = area_layer.dataProvider()
+area_prov.addAttributes([
+    QgsField(&quot;id&quot;, QVariant.Int),
+    QgsField(&quot;name&quot;, QVariant.String),
+    QgsField(&quot;type&quot;, QVariant.String)
+])
+area_layer.updateFields()
+
+areas = [
+    (1, &quot;Colaba&quot;,       &quot;South Mumbai&quot;,
+     [(72.815,18.900),(72.835,18.900),(72.835,18.920),(72.815,18.920),(72.815,18.900)]),
+    (2, &quot;Fort / CST&quot;,   &quot;South Mumbai&quot;,
+     [(72.830,18.930),(72.850,18.930),(72.850,18.950),(72.830,18.950),(72.830,18.930)]),
+    (3, &quot;Dadar&quot;,        &quot;Central Mumbai&quot;,
+     [(72.835,18.995),(72.860,18.995),(72.860,19.020),(72.835,19.020),(72.835,18.995)]),
+    (4, &quot;Bandra&quot;,       &quot;Western Suburbs&quot;,
+     [(72.815,19.050),(72.845,19.050),(72.845,19.070),(72.815,19.070),(72.815,19.050)]),
+    (5, &quot;Andheri&quot;,      &quot;Western Suburbs&quot;,
+     [(72.830,19.100),(72.870,19.100),(72.870,19.130),(72.830,19.130),(72.830,19.100)])
+]
+
+for aid, name, atype, coords in areas:
+    feat = QgsFeature()
+    pts = [QgsPointXY(x, y) for x, y in coords]
+    feat.setGeometry(QgsGeometry.fromPolygonXY([pts]))
+    feat.setAttributes([aid, name, atype])
+    area_prov.addFeature(feat)
+
+area_layer.updateExtents()
+project.addMapLayer(area_layer)
+
+symbol = QgsFillSymbol.createSimple({
+    &#x27;color&#x27;: &#x27;180,210,240,70&#x27;,
+    &#x27;outline_color&#x27;: &#x27;40,80,150&#x27;,
+    &#x27;outline_width&#x27;: &#x27;0.5&#x27;
+})
+area_layer.renderer().setSymbol(symbol)
+area_layer.triggerRepaint()
+
+road_layer = QgsVectorLayer(&quot;LineString?crs=EPSG:4326&quot;, &quot;Mumbai_Roads&quot;, &quot;memory&quot;)
+road_prov = road_layer.dataProvider()
+road_prov.addAttributes([
+    QgsField(&quot;id&quot;, QVariant.Int),
+    QgsField(&quot;name&quot;, QVariant.String)
+])
+road_layer.updateFields()
+
+roads = [
+    (1, &quot;Western Express Highway&quot;, [(72.835,18.910),(72.840,18.960),(72.840,19.020),
+                                     (72.835,19.060),(72.845,19.120)]),
+    (2, &quot;Eastern Express Highway&quot;,  [(72.845,18.940),(72.855,18.990),(72.860,19.050),
+                                     (72.865,19.110)]),
+    (3, &quot;SV Road&quot;,                  [(72.820,19.050),(72.830,19.070),(72.835,19.110)])
+]
+
+for rid, name, coords in roads:
+    feat = QgsFeature()
+    pts = [QgsPointXY(x, y) for x, y in coords]
+    feat.setGeometry(QgsGeometry.fromPolylineXY(pts))
+    feat.setAttributes([rid, name])
+    road_prov.addFeature(feat)
+
+road_layer.updateExtents()
+project.addMapLayer(road_layer)
+
+symbol = QgsLineSymbol.createSimple({&#x27;color&#x27;: &#x27;200,80,30&#x27;, &#x27;width&#x27;: &#x27;0.8&#x27;})
+road_layer.renderer().setSymbol(symbol)
+road_layer.triggerRepaint()
+
+rail_layer = QgsVectorLayer(&quot;LineString?crs=EPSG:4326&quot;, &quot;Mumbai_Railways&quot;, &quot;memory&quot;)
+rail_prov = rail_layer.dataProvider()
+rail_prov.addAttributes([
+    QgsField(&quot;id&quot;, QVariant.Int),
+    QgsField(&quot;name&quot;, QVariant.String)
+])
+rail_layer.updateFields()
+
+rails = [
+    (1, &quot;Western Line&quot;,  [(72.828,18.910),(72.832,18.960),(72.833,19.020),
+                           (72.830,19.065),(72.840,19.120)]),
+    (2, &quot;Central Line&quot;,  [(72.838,18.940),(72.848,18.995),(72.855,19.050),
+                           (72.860,19.100)]),
+    (3, &quot;Harbour Line&quot;,  [(72.838,18.940),(72.850,18.970),(72.862,19.000)])
+]
+
+for rid, name, coords in rails:
+    feat = QgsFeature()
+    pts = [QgsPointXY(x, y) for x, y in coords]
+    feat.setGeometry(QgsGeometry.fromPolylineXY(pts))
+    feat.setAttributes([rid, name])
+    rail_prov.addFeature(feat)
+
+rail_layer.updateExtents()
+project.addMapLayer(rail_layer)
+
+symbol = QgsLineSymbol.createSimple({
+    &#x27;color&#x27;: &#x27;80,80,80&#x27;, &#x27;width&#x27;: &#x27;0.7&#x27;, &#x27;line_style&#x27;: &#x27;dash&#x27;
+})
+rail_layer.renderer().setSymbol(symbol)
+rail_layer.triggerRepaint()
+
+landmark_layer = QgsVectorLayer(&quot;Point?crs=EPSG:4326&quot;, &quot;Mumbai_Landmarks&quot;, &quot;memory&quot;)
+landmark_prov = landmark_layer.dataProvider()
+landmark_prov.addAttributes([
+    QgsField(&quot;id&quot;, QVariant.Int),
+    QgsField(&quot;name&quot;, QVariant.String),
+    QgsField(&quot;type&quot;, QVariant.String)
+])
+landmark_layer.updateFields()
+
+landmarks = [
+    (1, &quot;Gateway of India&quot;,    &quot;Monument&quot;,  72.8347, 18.9220),
+    (2, &quot;CST Station&quot;,         &quot;Railway&quot;,   72.8353, 18.9398),
+    (3, &quot;Siddhivinayak Temple&quot;,&quot;Religious&quot;,  72.8309, 19.0170),
+    (4, &quot;Bandra-Worli Sea Link&quot;,&quot;Bridge&quot;,   72.8155, 19.0300),
+    (5, &quot;Wankhede Stadium&quot;,    &quot;Sports&quot;,    72.8268, 18.9388),
+    (6, &quot;Haji Ali Dargah&quot;,     &quot;Religious&quot;,  72.8128, 18.9827),
+    (7, &quot;Juhu Beach&quot;,          &quot;Beach&quot;,     72.8267, 19.0990)
+]
+
+for lid, name, ltype, x, y in landmarks:
+    feat = QgsFeature()
+    feat.setGeometry(QgsGeometry.fromPointXY(QgsPointXY(x, y)))
+    feat.setAttributes([lid, name, ltype])
+    landmark_prov.addFeature(feat)
+
+landmark_layer.updateExtents()
+project.addMapLayer(landmark_layer)
+
+symbol = QgsMarkerSymbol.createSimple({
+    &#x27;name&#x27;: &#x27;star&#x27;, &#x27;color&#x27;: &#x27;220,50,50&#x27;, &#x27;size&#x27;: &#x27;4&#x27;,
+    &#x27;outline_color&#x27;: &#x27;150,0,0&#x27;, &#x27;outline_width&#x27;: &#x27;0.3&#x27;
+})
+landmark_layer.renderer().setSymbol(symbol)
+landmark_layer.triggerRepaint()
+
+print(&quot;\n  [Q1.6] Creating and Importing CSV File...&quot;)
+
+csv_path = os.path.join(download_dir, &quot;mumbai_hospitals.csv&quot;)
+
+csv_data = [
+    [&quot;id&quot;, &quot;name&quot;, &quot;type&quot;, &quot;beds&quot;, &quot;latitude&quot;, &quot;longitude&quot;],
+    [1, &quot;KEM Hospital&quot;,          &quot;Government&quot;, 1800, 18.9942, 72.8410],
+    [2, &quot;Lilavati Hospital&quot;,     &quot;Private&quot;,    300,  19.0509, 72.8283],
+    [3, &quot;Bombay Hospital&quot;,       &quot;Private&quot;,    750,  18.9312, 72.8282],
+    [4, &quot;Nair Hospital&quot;,         &quot;Government&quot;, 1200, 18.9890, 72.8340],
+    [5, &quot;Hinduja Hospital&quot;,      &quot;Private&quot;,    500,  19.0370, 72.8455],
+    [6, &quot;Sion Hospital&quot;,         &quot;Government&quot;, 600,  19.0400, 72.8620],
+    [7, &quot;Wockhardt Hospital&quot;,    &quot;Private&quot;,    200,  18.9660, 72.8310],
+    [8, &quot;Jaslok Hospital&quot;,       &quot;Private&quot;,    364,  18.9710, 72.8070]
+]
+
+with open(csv_path, &#x27;w&#x27;, newline=&#x27;&#x27;, encoding=&#x27;utf-8&#x27;) as f:
+    writer = csv.writer(f)
+    for row in csv_data:
+        writer.writerow(row)
+
+print(f&quot;  -&gt; CSV file created: mumbai_hospitals.csv&quot;)
+
+uri = f&quot;file:///{csv_path}?delimiter=,&amp;xField=longitude&amp;yField=latitude&amp;crs=EPSG:4326&quot;
+csv_layer = QgsVectorLayer(uri, &quot;Hospitals_CSV_Import&quot;, &quot;delimitedtext&quot;)
+
+if csv_layer.isValid():
+    project.addMapLayer(csv_layer)
+    symbol = QgsMarkerSymbol.createSimple({
+        &#x27;name&#x27;: &#x27;cross&#x27;, &#x27;color&#x27;: &#x27;0,150,0&#x27;, &#x27;size&#x27;: &#x27;4.5&#x27;,
+        &#x27;outline_color&#x27;: &#x27;0,100,0&#x27;, &#x27;outline_width&#x27;: &#x27;0.5&#x27;
+    })
+    csv_layer.renderer().setSymbol(symbol)
+    csv_layer.triggerRepaint()
+    print(f&quot;  -&gt; CSV imported as layer: {csv_layer.name()} ({csv_layer.featureCount()} features)&quot;)
+else:
+    print(&quot;  -&gt; ERROR: Could not import CSV layer!&quot;)
+
+print(&quot;\n  [Q1.7] Layer Names and Geometry Info (CRS: WGS 84):&quot;)
+print(f&quot;  {&#x27;Layer Name&#x27;:&lt;25s} {&#x27;Geometry&#x27;:&lt;12s} {&#x27;Features&#x27;:&gt;8s}  {&#x27;CRS&#x27;}&quot;)
+print(f&quot;  {&#x27;-&#x27;*25} {&#x27;-&#x27;*12} {&#x27;-&#x27;*8}  {&#x27;-&#x27;*15}&quot;)
+
+all_layers = [area_layer, road_layer, rail_layer, landmark_layer]
+if csv_layer.isValid():
+    all_layers.append(csv_layer)
+
+for layer in all_layers:
+    geom_type = QgsWkbTypes.displayString(layer.wkbType())
+    print(f&quot;  {layer.name():&lt;25s} {geom_type:&lt;12s} {layer.featureCount():&gt;8d}  {layer.crs().authid()}&quot;)
+
+label_configs = [
+    (area_layer, &quot;name&quot;),
+    (road_layer, &quot;name&quot;),
+    (rail_layer, &quot;name&quot;),
+    (landmark_layer, &quot;name&quot;),
+]
+if csv_layer.isValid():
+    label_configs.append((csv_layer, &quot;name&quot;))
+
+for layer, field in label_configs:
+    settings = QgsPalLayerSettings()
+    settings.fieldName = field
+    settings.enabled = True
+    text_format = QgsTextFormat()
+    text_format.setSize(8)
+    buf = QgsTextBufferSettings()
+    buf.setEnabled(True)
+    buf.setSize(1)
+    buf.setColor(QColor(255, 255, 255))
+    text_format.setBuffer(buf)
+    settings.setFormat(text_format)
+    labeling = QgsVectorLayerSimpleLabeling(settings)
+    layer.setLabelsEnabled(True)
+    layer.setLabeling(labeling)
+    layer.triggerRepaint()
+
+canvas = iface.mapCanvas()
+
+center = QgsPointXY(72.845, 19.00)
+canvas.setCenter(center)
+canvas.zoomScale(40000)
+canvas.refresh()
+print(f&quot;\n  [Q1.1] Scale set to 1:{int(canvas.scale())}&quot;)
+
+print(&quot;\n  [Q1.4] Setting project properties...&quot;)
+project.setTitle(&quot;Mumbai City Map&quot;)
+project.writeEntry(&quot;WMSServiceTitle&quot;, &quot;/&quot;, &quot;Mumbai City Map - GIS Practical&quot;)
+project.setBackgroundColor(QColor(240, 248, 255))
+print(&quot;  -&gt; Project title: Mumbai City Map&quot;)
+print(&quot;  -&gt; Background color: Light blue (Alice Blue)&quot;)
+
+print(&quot;\n  Creating Print Layout with cartographic elements...&quot;)
+
+layout_name = &quot;Mumbai_Map_Layout&quot;
+
+manager = project.layoutManager()
+existing = manager.layoutByName(layout_name)
+if existing:
+    manager.removeLayout(existing)
+
+layout = QgsPrintLayout(project)
+layout.initializeDefaults()
+layout.setName(layout_name)
+manager.addLayout(layout)
+
+map_item = QgsLayoutItemMap(layout)
+map_item.setRect(20, 20, 200, 250)
+map_item.setExtent(canvas.extent())
+map_item.setCrs(crs)
+layout.addLayoutItem(map_item)
+map_item.attemptMove(QgsLayoutPoint(15, 30, QgsUnitTypes.LayoutMillimeters))
+map_item.attemptResize(QgsLayoutSize(180, 220, QgsUnitTypes.LayoutMillimeters))
+
+map_item.setScale(40000)
+print(f&quot;  -&gt; Map added to layout (Scale 1:40000)&quot;)
+
+title = QgsLayoutItemLabel(layout)
+title.setText(&quot;MUMBAI CITY MAP&quot;)
+title.setFont(QFont(&quot;Arial&quot;, 20, QFont.Bold))
+title.adjustSizeToText()
+layout.addLayoutItem(title)
+title.attemptMove(QgsLayoutPoint(50, 5, QgsUnitTypes.LayoutMillimeters))
+print(&quot;  [Q1.5] -&gt; Title added: MUMBAI CITY MAP&quot;)
+
+legend = QgsLayoutItemLegend(layout)
+legend.setTitle(&quot;Legend&quot;)
+legend.setLinkedMap(map_item)
+layout.addLayoutItem(legend)
+legend.attemptMove(QgsLayoutPoint(200, 30, QgsUnitTypes.LayoutMillimeters))
+print(&quot;  [Q1.2] -&gt; Legend added&quot;)
+
+scalebar = QgsLayoutItemScaleBar(layout)
+scalebar.setStyle(&#x27;Single Box&#x27;)
+scalebar.setLinkedMap(map_item)
+scalebar.setMapUnitsPerScaleBarUnit(1000)
+scalebar.setNumberOfSegments(4)
+scalebar.setNumberOfSegmentsLeft(0)
+scalebar.setUnitsPerSegment(1)
+scalebar.setUnitLabel(&quot;km&quot;)
+layout.addLayoutItem(scalebar)
+scalebar.attemptMove(QgsLayoutPoint(15, 255, QgsUnitTypes.LayoutMillimeters))
+print(&quot;  [Q1.3] -&gt; Scale Bar added&quot;)
+
+north = QgsLayoutItemLabel(layout)
+north.setText(&quot;N\n▲&quot;)
+north.setFont(QFont(&quot;Arial&quot;, 16, QFont.Bold))
+north.adjustSizeToText()
+layout.addLayoutItem(north)
+north.attemptMove(QgsLayoutPoint(200, 240, QgsUnitTypes.LayoutMillimeters))
+print(&quot;  -&gt; North Arrow added&quot;)
+
+output_path = os.path.join(download_dir, &quot;Mumbai_Map_Output.jpg&quot;)
+
+exporter = QgsLayoutExporter(layout)
+settings = QgsLayoutExporter.ImageExportSettings()
+settings.dpi = 300
+
+result = exporter.exportToImage(output_path, settings)
+
+if result == QgsLayoutExporter.Success:
+    print(f&quot;\n  -&gt; Map exported: Mumbai_Map_Output.jpg (300 dpi)&quot;)
+else:
+    print(f&quot;\n  -&gt; Export status code: {result}&quot;)
+
+print(&quot;\n&quot; + &quot;=&quot; * 65)
+print(&quot;  Q1: Mumbai Map - COMPLETED SUCCESSFULLY!&quot;)
+print(&quot;=&quot; * 65)
+print(&quot;  1. Scale        : 1:40000, CRS = WGS 84 (EPSG:4326)&quot;)
+print(&quot;  2. Legend        : Added to print layout&quot;)
+print(&quot;  3. Scale Bar     : Added to print layout&quot;)
+print(&quot;  4. Properties    : Title, background color, CRS configured&quot;)
+print(&quot;  5. Map Name      : &#x27;MUMBAI CITY MAP&#x27;&quot;)
+print(&quot;  6. CSV Import    : mumbai_hospitals.csv (8 hospitals)&quot;)
+print(&quot;  7. Layer Info    : Names &amp; geometry types with CRS shown above&quot;)
+print(f&quot;\n  Output: Mumbai_Map_Output.jpg&quot;)
+print(f&quot;  Layout: {layout_name} (View via Project &gt; Layouts)&quot;)
+print(&quot;=&quot; * 65)
+</pre>
+</body>
+</html>

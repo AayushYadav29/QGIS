@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Q7 - Vector Points Map</title>
+</head>
+<body>
+    <pre style="font-size:3px;">from qgis.core import *
+from qgis.gui import *
+from PyQt5.QtGui import QColor
+from PyQt5.QtCore import QVariant
+
+project = QgsProject.instance()
+project.setTitle(&quot;GIS Practical - Colleges, Restaurants &amp; Hospitals Map&quot;)
+
+college_layer = QgsVectorLayer(&quot;Point?crs=EPSG:4326&quot;, &quot;Colleges&quot;, &quot;memory&quot;)
+college_prov = college_layer.dataProvider()
+college_prov.addAttributes([
+    QgsField(&quot;id&quot;, QVariant.Int),
+    QgsField(&quot;name&quot;, QVariant.String),
+    QgsField(&quot;type&quot;, QVariant.String)
+])
+college_layer.updateFields()
+
+colleges_data = [
+    (1, &quot;St. Xavier&#x27;s College&quot;,       &quot;Arts &amp; Science&quot;, 72.832, 18.941),
+    (2, &quot;IIT Bombay&quot;,                 &quot;Engineering&quot;,    72.913, 19.133),
+    (3, &quot;Mumbai University&quot;,          &quot;University&quot;,     72.836, 18.978),
+    (4, &quot;VJTI&quot;,                       &quot;Engineering&quot;,    72.840, 19.022),
+    (5, &quot;Jai Hind College&quot;,           &quot;Arts &amp; Science&quot;, 72.815, 18.937),
+    (6, &quot;Rizvi College&quot;,              &quot;Engineering&quot;,    72.830, 19.060),
+    (7, &quot;Wilson College&quot;,             &quot;Arts &amp; Science&quot;, 72.812, 18.955)
+]
+
+for cid, name, ctype, x, y in colleges_data:
+    feat = QgsFeature()
+    feat.setGeometry(QgsGeometry.fromPointXY(QgsPointXY(x, y)))
+    feat.setAttributes([cid, name, ctype])
+    college_prov.addFeature(feat)
+
+college_layer.updateExtents()
+project.addMapLayer(college_layer)
+
+symbol = QgsMarkerSymbol.createSimple({
+    &#x27;name&#x27;: &#x27;triangle&#x27;,
+    &#x27;color&#x27;: &#x27;30,100,220&#x27;,
+    &#x27;size&#x27;: &#x27;5&#x27;,
+    &#x27;outline_color&#x27;: &#x27;0,50,150&#x27;,
+    &#x27;outline_width&#x27;: &#x27;0.4&#x27;
+})
+college_layer.renderer().setSymbol(symbol)
+college_layer.triggerRepaint()
+
+restaurant_layer = QgsVectorLayer(&quot;Point?crs=EPSG:4326&quot;, &quot;Restaurants&quot;, &quot;memory&quot;)
+restaurant_prov = restaurant_layer.dataProvider()
+restaurant_prov.addAttributes([
+    QgsField(&quot;id&quot;, QVariant.Int),
+    QgsField(&quot;name&quot;, QVariant.String),
+    QgsField(&quot;cuisine&quot;, QVariant.String),
+    QgsField(&quot;rating&quot;, QVariant.Double)
+])
+restaurant_layer.updateFields()
+
+restaurants_data = [
+
+    (1,  &quot;Trishna&quot;,             &quot;Indian&quot;,       4.5, 72.832, 18.935),
+    (2,  &quot;Britannia &amp; Co&quot;,      &quot;Indian&quot;,       4.3, 72.838, 18.943),
+    (3,  &quot;Mahesh Lunch Home&quot;,   &quot;Indian&quot;,       4.2, 72.835, 18.955),
+
+    (4,  &quot;China Garden&quot;,        &quot;Chinese&quot;,      4.1, 72.810, 18.970),
+    (5,  &quot;Mainland China&quot;,      &quot;Chinese&quot;,      4.4, 72.842, 19.015),
+    (6,  &quot;Yauatcha&quot;,            &quot;Chinese&quot;,      4.6, 72.828, 19.005),
+
+    (7,  &quot;Pizzeria&quot;,            &quot;Italian&quot;,      4.0, 72.825, 19.055),
+    (8,  &quot;Gustoso Ristorante&quot;,  &quot;Italian&quot;,      4.3, 72.850, 19.065),
+
+    (9,  &quot;Jumbo King&quot;,          &quot;Fast Food&quot;,    3.8, 72.845, 18.985),
+    (10, &quot;Goli Vada Pav&quot;,       &quot;Fast Food&quot;,    3.9, 72.838, 19.040),
+    (11, &quot;McDonald&#x27;s Andheri&quot;,  &quot;Fast Food&quot;,    3.7, 72.845, 19.120),
+
+    (12, &quot;Gajalee&quot;,             &quot;Seafood&quot;,      4.5, 72.852, 19.025),
+    (13, &quot;Apoorva Seafood&quot;,     &quot;Seafood&quot;,      4.2, 72.830, 18.948)
+]
+
+for rid, name, cuisine, rating, x, y in restaurants_data:
+    feat = QgsFeature()
+    feat.setGeometry(QgsGeometry.fromPointXY(QgsPointXY(x, y)))
+    feat.setAttributes([rid, name, cuisine, rating])
+    restaurant_prov.addFeature(feat)
+
+restaurant_layer.updateExtents()
+project.addMapLayer(restaurant_layer)
+
+categories = []
+
+indian_symbol = QgsMarkerSymbol.createSimple({
+    &#x27;name&#x27;: &#x27;circle&#x27;, &#x27;color&#x27;: &#x27;255,140,0&#x27;, &#x27;size&#x27;: &#x27;5.5&#x27;,
+    &#x27;outline_color&#x27;: &#x27;180,80,0&#x27;, &#x27;outline_width&#x27;: &#x27;0.4&#x27;
+})
+categories.append(QgsRendererCategory(&quot;Indian&quot;, indian_symbol, &quot;Indian&quot;))
+
+chinese_symbol = QgsMarkerSymbol.createSimple({
+    &#x27;name&#x27;: &#x27;diamond&#x27;, &#x27;color&#x27;: &#x27;220,30,30&#x27;, &#x27;size&#x27;: &#x27;5&#x27;,
+    &#x27;outline_color&#x27;: &#x27;150,0,0&#x27;, &#x27;outline_width&#x27;: &#x27;0.4&#x27;
+})
+categories.append(QgsRendererCategory(&quot;Chinese&quot;, chinese_symbol, &quot;Chinese&quot;))
+
+italian_symbol = QgsMarkerSymbol.createSimple({
+    &#x27;name&#x27;: &#x27;square&#x27;, &#x27;color&#x27;: &#x27;0,160,60&#x27;, &#x27;size&#x27;: &#x27;4.5&#x27;,
+    &#x27;outline_color&#x27;: &#x27;0,100,30&#x27;, &#x27;outline_width&#x27;: &#x27;0.4&#x27;
+})
+categories.append(QgsRendererCategory(&quot;Italian&quot;, italian_symbol, &quot;Italian&quot;))
+
+fastfood_symbol = QgsMarkerSymbol.createSimple({
+    &#x27;name&#x27;: &#x27;star&#x27;, &#x27;color&#x27;: &#x27;255,220,0&#x27;, &#x27;size&#x27;: &#x27;5&#x27;,
+    &#x27;outline_color&#x27;: &#x27;180,150,0&#x27;, &#x27;outline_width&#x27;: &#x27;0.4&#x27;
+})
+categories.append(QgsRendererCategory(&quot;Fast Food&quot;, fastfood_symbol, &quot;Fast Food&quot;))
+
+seafood_symbol = QgsMarkerSymbol.createSimple({
+    &#x27;name&#x27;: &#x27;pentagon&#x27;, &#x27;color&#x27;: &#x27;0,180,200&#x27;, &#x27;size&#x27;: &#x27;5&#x27;,
+    &#x27;outline_color&#x27;: &#x27;0,120,140&#x27;, &#x27;outline_width&#x27;: &#x27;0.4&#x27;
+})
+categories.append(QgsRendererCategory(&quot;Seafood&quot;, seafood_symbol, &quot;Seafood&quot;))
+
+renderer = QgsCategorizedSymbolRenderer(&quot;cuisine&quot;, categories)
+restaurant_layer.setRenderer(renderer)
+restaurant_layer.triggerRepaint()
+
+print(&quot;\n  [Q1.2] Restaurant categories styled:&quot;)
+print(&quot;    Indian    -&gt; Orange Circle  (size 5.5)&quot;)
+print(&quot;    Chinese   -&gt; Red Diamond    (size 5.0)&quot;)
+print(&quot;    Italian   -&gt; Green Square   (size 4.5)&quot;)
+print(&quot;    Fast Food -&gt; Yellow Star    (size 5.0)&quot;)
+print(&quot;    Seafood   -&gt; Cyan Pentagon  (size 5.0)&quot;)
+
+hospital_layer = QgsVectorLayer(&quot;Point?crs=EPSG:4326&quot;, &quot;Hospitals&quot;, &quot;memory&quot;)
+hospital_prov = hospital_layer.dataProvider()
+hospital_prov.addAttributes([
+    QgsField(&quot;id&quot;, QVariant.Int),
+    QgsField(&quot;name&quot;, QVariant.String),
+    QgsField(&quot;type&quot;, QVariant.String),
+    QgsField(&quot;beds&quot;, QVariant.Int)
+])
+hospital_layer.updateFields()
+
+hospitals_data = [
+    (1, &quot;KEM Hospital&quot;,        &quot;Government&quot;, 1800, 72.841, 18.994),
+    (2, &quot;Lilavati Hospital&quot;,   &quot;Private&quot;,    300,  72.828, 19.051),
+    (3, &quot;Bombay Hospital&quot;,     &quot;Private&quot;,    750,  72.828, 18.931),
+    (4, &quot;Nair Hospital&quot;,       &quot;Government&quot;, 1200, 72.834, 18.989),
+    (5, &quot;Hinduja Hospital&quot;,    &quot;Private&quot;,    500,  72.845, 19.037),
+    (6, &quot;Sion Hospital&quot;,       &quot;Government&quot;, 600,  72.862, 19.040)
+]
+
+for hid, name, htype, beds, x, y in hospitals_data:
+    feat = QgsFeature()
+    feat.setGeometry(QgsGeometry.fromPointXY(QgsPointXY(x, y)))
+    feat.setAttributes([hid, name, htype, beds])
+    hospital_prov.addFeature(feat)
+
+hospital_layer.updateExtents()
+project.addMapLayer(hospital_layer)
+
+symbol = QgsMarkerSymbol.createSimple({
+    &#x27;name&#x27;: &#x27;cross&#x27;,
+    &#x27;color&#x27;: &#x27;220,0,0&#x27;,
+    &#x27;size&#x27;: &#x27;5&#x27;,
+    &#x27;outline_color&#x27;: &#x27;150,0,0&#x27;,
+    &#x27;outline_width&#x27;: &#x27;0.5&#x27;
+})
+hospital_layer.renderer().setSymbol(symbol)
+hospital_layer.triggerRepaint()
+
+road_layer = QgsVectorLayer(&quot;LineString?crs=EPSG:4326&quot;, &quot;Roads&quot;, &quot;memory&quot;)
+road_prov = road_layer.dataProvider()
+road_prov.addAttributes([
+    QgsField(&quot;id&quot;, QVariant.Int),
+    QgsField(&quot;name&quot;, QVariant.String)
+])
+road_layer.updateFields()
+
+roads_data = [
+    (1, &quot;Western Express Highway&quot;,
+     [(72.835,18.920),(72.838,18.960),(72.840,19.020),(72.835,19.060),(72.845,19.130)]),
+    (2, &quot;Eastern Express Highway&quot;,
+     [(72.850,18.940),(72.855,18.990),(72.860,19.050),(72.865,19.120)]),
+    (3, &quot;SV Road&quot;,
+     [(72.820,19.050),(72.828,19.070),(72.835,19.120)]),
+    (4, &quot;LBS Marg&quot;,
+     [(72.848,18.980),(72.860,19.010),(72.878,19.060)]),
+    (5, &quot;Marine Drive&quot;,
+     [(72.815,18.925),(72.810,18.945),(72.808,18.965)])
+]
+
+for rid, name, coords in roads_data:
+    feat = QgsFeature()
+    pts = [QgsPointXY(x, y) for x, y in coords]
+    feat.setGeometry(QgsGeometry.fromPolylineXY(pts))
+    feat.setAttributes([rid, name])
+    road_prov.addFeature(feat)
+
+road_layer.updateExtents()
+project.addMapLayer(road_layer)
+
+symbol = QgsLineSymbol.createSimple({
+    &#x27;color&#x27;: &#x27;80,80,80&#x27;,
+    &#x27;width&#x27;: &#x27;0.9&#x27;
+})
+road_layer.renderer().setSymbol(symbol)
+road_layer.triggerRepaint()
+
+railway_layer = QgsVectorLayer(&quot;LineString?crs=EPSG:4326&quot;, &quot;Railway_Tracks&quot;, &quot;memory&quot;)
+railway_prov = railway_layer.dataProvider()
+railway_prov.addAttributes([
+    QgsField(&quot;id&quot;, QVariant.Int),
+    QgsField(&quot;name&quot;, QVariant.String)
+])
+railway_layer.updateFields()
+
+railways_data = [
+    (1, &quot;Western Line&quot;,
+     [(72.828,18.920),(72.830,18.960),(72.833,19.020),(72.830,19.065),(72.840,19.130)]),
+    (2, &quot;Central Line&quot;,
+     [(72.838,18.940),(72.848,18.995),(72.855,19.050),(72.860,19.110)]),
+    (3, &quot;Harbour Line&quot;,
+     [(72.838,18.940),(72.845,18.970),(72.855,18.995),(72.870,19.010)])
+]
+
+for rid, name, coords in railways_data:
+    feat = QgsFeature()
+    pts = [QgsPointXY(x, y) for x, y in coords]
+    feat.setGeometry(QgsGeometry.fromPolylineXY(pts))
+    feat.setAttributes([rid, name])
+    railway_prov.addFeature(feat)
+
+railway_layer.updateExtents()
+project.addMapLayer(railway_layer)
+
+symbol = QgsLineSymbol.createSimple({
+    &#x27;color&#x27;: &#x27;139,90,43&#x27;,
+    &#x27;width&#x27;: &#x27;0.7&#x27;,
+    &#x27;line_style&#x27;: &#x27;dash&#x27;
+})
+railway_layer.renderer().setSymbol(symbol)
+railway_layer.triggerRepaint()
+
+label_configs = [
+    (college_layer, &quot;name&quot;),
+    (restaurant_layer, &quot;name&quot;),
+    (hospital_layer, &quot;name&quot;),
+    (road_layer, &quot;name&quot;),
+    (railway_layer, &quot;name&quot;)
+]
+
+for layer, field in label_configs:
+    settings = QgsPalLayerSettings()
+    settings.fieldName = field
+    settings.enabled = True
+    text_format = QgsTextFormat()
+    text_format.setSize(7)
+    buf = QgsTextBufferSettings()
+    buf.setEnabled(True)
+    buf.setSize(1)
+    buf.setColor(QColor(255, 255, 255))
+    text_format.setBuffer(buf)
+    settings.setFormat(text_format)
+    labeling = QgsVectorLayerSimpleLabeling(settings)
+    layer.setLabelsEnabled(True)
+    layer.setLabeling(labeling)
+    layer.triggerRepaint()
+
+canvas = iface.mapCanvas()
+canvas.setExtent(road_layer.extent())
+canvas.refresh()
+
+print(&quot;\n&quot; + &quot;=&quot; * 65)
+print(&quot;  Q1: Vector Layers - CREATED SUCCESSFULLY!&quot;)
+print(&quot;=&quot; * 65)
+print(&quot;  POINT LAYERS (3 location types):&quot;)
+print(f&quot;    1. Colleges    : {college_layer.featureCount()} features (Blue Triangle)&quot;)
+print(f&quot;    2. Restaurants : {restaurant_layer.featureCount()} features (Categorized by cuisine)&quot;)
+print(f&quot;    3. Hospitals   : {hospital_layer.featureCount()} features (Red Cross)&quot;)
+print(&quot;  LINE LAYERS:&quot;)
+print(f&quot;    4. Roads       : {road_layer.featureCount()} features&quot;)
+print(f&quot;    5. Railway Tracks: {railway_layer.featureCount()} features&quot;)
+print(&quot;\n  Restaurant Categories (different color &amp; size):&quot;)
+print(&quot;    Indian    -&gt; Orange Circle  | Chinese -&gt; Red Diamond&quot;)
+print(&quot;    Italian   -&gt; Green Square   | Fast Food -&gt; Yellow Star&quot;)
+print(&quot;    Seafood   -&gt; Cyan Pentagon&quot;)
+print(&quot;  CRS: EPSG:4326 (WGS 84)&quot;)
+print(&quot;=&quot; * 65)
+</pre>
+</body>
+</html>

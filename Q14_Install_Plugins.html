@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Q14 - Install Plugins</title>
+</head>
+<body>
+    <pre style="font-size:3px;">from qgis.core import *
+from qgis.gui import *
+from qgis.utils import iface, plugins, available_plugins, active_plugins
+from pyplugin_installer import instance as plugin_installer_instance
+from pyplugin_installer.installer_data import repositories, plugins as plugin_data
+
+print(&quot;=&quot; * 65)
+print(&quot;  Q2: Install and Enable Plugins (Experimental)&quot;)
+print(&quot;=&quot; * 65)
+
+print(&quot;\n&quot; + &quot;-&quot; * 65)
+print(&quot;  STEP 1: Enable Experimental Plugins&quot;)
+print(&quot;-&quot; * 65)
+
+from qgis.PyQt.QtCore import QSettings
+
+settings = QSettings()
+
+settings.setValue(&quot;app/plugin_installer/allowExperimental&quot;, True)
+print(&quot;  [OK] Experimental plugins: ENABLED&quot;)
+
+settings.setValue(&quot;app/plugin_installer/allowDeprecated&quot;, False)
+print(&quot;  [OK] Deprecated plugins: DISABLED (best practice)&quot;)
+
+settings.setValue(&quot;app/plugin_installer/checkOnStart&quot;, True)
+print(&quot;  [OK] Check for updates on startup: ENABLED&quot;)
+
+print(&quot;\n&quot; + &quot;-&quot; * 65)
+print(&quot;  STEP 2: Refresh Plugin Repository&quot;)
+print(&quot;-&quot; * 65)
+
+try:
+    installer = plugin_installer_instance()
+    installer.fetchAvailablePlugins(False)
+    print(&quot;  [OK] Plugin repository refreshed successfully&quot;)
+except Exception as e:
+    print(f&quot;  [NOTE] Repository refresh: {e}&quot;)
+    print(&quot;  (This is normal if run outside the main QGIS window)&quot;)
+
+print(&quot;\n&quot; + &quot;-&quot; * 65)
+print(&quot;  STEP 3: Install Plugins&quot;)
+print(&quot;-&quot; * 65)
+
+plugins_to_install = [
+    (&quot;QuickMapServices&quot;,     &quot;Adds basemaps (Google, OSM, Bing, etc.)&quot;),
+    (&quot;qgis2web&quot;,             &quot;Export QGIS project to web map (OpenLayers/Leaflet)&quot;),
+    (&quot;QuickOSM&quot;,             &quot;Download OpenStreetMap data directly&quot;),
+    (&quot;Semi-Automatic Classification Plugin&quot;, &quot;Remote sensing &amp; land classification&quot;),
+]
+
+for plugin_name, description in plugins_to_install:
+    print(f&quot;\n  Plugin: {plugin_name}&quot;)
+    print(f&quot;  Purpose: {description}&quot;)
+
+    try:
+
+        if plugin_name in active_plugins:
+            print(f&quot;  Status: Already installed and ACTIVE&quot;)
+            continue
+
+        installer = plugin_installer_instance()
+        installer.installPlugin(plugin_name)
+        print(f&quot;  Status: INSTALLED successfully&quot;)
+
+    except Exception as e:
+        print(f&quot;  Status: Could not install -&gt; {e}&quot;)
+        print(f&quot;  Manual: Plugins &gt; Manage and Install Plugins &gt; Search &#x27;{plugin_name}&#x27;&quot;)
+
+print(&quot;\n\n&quot; + &quot;-&quot; * 65)
+print(&quot;  STEP 4: Enable/Activate Plugins&quot;)
+print(&quot;-&quot; * 65)
+
+for plugin_name, description in plugins_to_install:
+    try:
+
+        if plugin_name not in active_plugins:
+            iface.pluginManagerInterface().loadPlugin(plugin_name)
+            iface.pluginManagerInterface().startPlugin(plugin_name)
+            print(f&quot;  [OK] {plugin_name}: ENABLED&quot;)
+        else:
+            print(f&quot;  [OK] {plugin_name}: Already ACTIVE&quot;)
+    except Exception as e:
+        print(f&quot;  [--] {plugin_name}: {e}&quot;)
+
+print(&quot;\n\n&quot; + &quot;-&quot; * 65)
+print(&quot;  STEP 5: All Installed Plugins&quot;)
+print(&quot;-&quot; * 65)
+
+print(f&quot;\n  {&#x27;Plugin Name&#x27;:&lt;45s} {&#x27;Status&#x27;:&lt;10s}&quot;)
+print(f&quot;  {&#x27;=&#x27;*45} {&#x27;=&#x27;*10}&quot;)
+
+try:
+    all_plugins = available_plugins
+    active = active_plugins
+
+    for pname in sorted(all_plugins):
+        status = &quot;ACTIVE&quot; if pname in active else &quot;INACTIVE&quot;
+        print(f&quot;  {pname:&lt;45s} {status:&lt;10s}&quot;)
+
+    print(f&quot;\n  Total plugins available: {len(all_plugins)}&quot;)
+    print(f&quot;  Active plugins: {len(active)}&quot;)
+except Exception as e:
+    print(f&quot;  [NOTE] Could not list plugins: {e}&quot;)
+
+print(&quot;\n\n&quot; + &quot;-&quot; * 65)
+print(&quot;  MANUAL STEPS (for reference in exam):&quot;)
+print(&quot;-&quot; * 65)
+print(\
+   )
+
+print(&quot;=&quot; * 65)
+print(&quot;  Q2: Plugin Management - COMPLETED!&quot;)
+print(&quot;=&quot; * 65)
+print(&quot;  1. Experimental plugins ENABLED in settings&quot;)
+print(&quot;  2. Plugin repository refreshed&quot;)
+print(&quot;  3. Attempted installation of useful plugins:&quot;)
+for pname, desc in plugins_to_install:
+    print(f&quot;     - {pname}&quot;)
+print(&quot;  4. All plugins activated&quot;)
+print(&quot;  5. Full plugin list displayed&quot;)
+print(&quot;=&quot; * 65)
+</pre>
+</body>
+</html>

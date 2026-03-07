@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Q1 - Create Map</title>
+</head>
+<body>
+    <pre style="font-size:3px;">from qgis.core import *
+from qgis.gui import *
+from PyQt5.QtGui import QColor
+from PyQt5.QtCore import QVariant
+
+project = QgsProject.instance()
+project.setTitle(&quot;GIS Practical - Residential Area Map (Mumbai)&quot;)
+
+area_layer = QgsVectorLayer(&quot;Polygon?crs=EPSG:4326&quot;, &quot;Areas&quot;, &quot;memory&quot;)
+area_provider = area_layer.dataProvider()
+area_provider.addAttributes([
+    QgsField(&quot;id&quot;, QVariant.Int),
+    QgsField(&quot;name&quot;, QVariant.String)
+])
+area_layer.updateFields()
+
+areas_data = [
+    (1, &quot;Andheri East&quot;,   [(72.855,19.13),(72.88,19.13),(72.88,19.16),(72.855,19.16),(72.855,19.13)]),
+    (2, &quot;Andheri West&quot;,   [(72.83,19.13),(72.855,19.13),(72.855,19.16),(72.83,19.16),(72.83,19.13)]),
+    (3, &quot;Goregaon East&quot;,  [(72.855,19.10),(72.88,19.10),(72.88,19.13),(72.855,19.13),(72.855,19.10)]),
+    (4, &quot;Goregaon West&quot;,  [(72.83,19.10),(72.855,19.10),(72.855,19.13),(72.83,19.13),(72.83,19.10)])
+]
+
+for aid, name, coords in areas_data:
+    feat = QgsFeature()
+    points = [QgsPointXY(x, y) for x, y in coords]
+    feat.setGeometry(QgsGeometry.fromPolygonXY([points]))
+    feat.setAttributes([aid, name])
+    area_provider.addFeature(feat)
+
+area_layer.updateExtents()
+project.addMapLayer(area_layer)
+
+symbol = QgsFillSymbol.createSimple({
+    &#x27;color&#x27;: &#x27;180,200,255,60&#x27;,
+    &#x27;outline_color&#x27;: &#x27;0,0,180&#x27;,
+    &#x27;outline_width&#x27;: &#x27;0.5&#x27;
+})
+area_layer.renderer().setSymbol(symbol)
+area_layer.triggerRepaint()
+
+garden_layer = QgsVectorLayer(&quot;Polygon?crs=EPSG:4326&quot;, &quot;Gardens&quot;, &quot;memory&quot;)
+garden_provider = garden_layer.dataProvider()
+garden_provider.addAttributes([
+    QgsField(&quot;id&quot;, QVariant.Int),
+    QgsField(&quot;name&quot;, QVariant.String)
+])
+garden_layer.updateFields()
+
+gardens_data = [
+    (1, &quot;Joggers Park&quot;,       [(72.838,19.138),(72.843,19.138),(72.843,19.143),(72.838,19.143),(72.838,19.138)]),
+    (2, &quot;Five Gardens&quot;,       [(72.858,19.138),(72.863,19.138),(72.863,19.143),(72.858,19.143),(72.858,19.138)]),
+    (3, &quot;Hanging Gardens&quot;,    [(72.838,19.108),(72.843,19.108),(72.843,19.113),(72.838,19.113),(72.838,19.108)]),
+    (4, &quot;Priyadarshini Park&quot;, [(72.868,19.118),(72.873,19.118),(72.873,19.123),(72.868,19.123),(72.868,19.118)])
+]
+
+for gid, name, coords in gardens_data:
+    feat = QgsFeature()
+    points = [QgsPointXY(x, y) for x, y in coords]
+    feat.setGeometry(QgsGeometry.fromPolygonXY([points]))
+    feat.setAttributes([gid, name])
+    garden_provider.addFeature(feat)
+
+garden_layer.updateExtents()
+project.addMapLayer(garden_layer)
+
+symbol = QgsFillSymbol.createSimple({
+    &#x27;color&#x27;: &#x27;100,200,100,130&#x27;,
+    &#x27;outline_color&#x27;: &#x27;0,120,0&#x27;,
+    &#x27;outline_width&#x27;: &#x27;0.5&#x27;
+})
+garden_layer.renderer().setSymbol(symbol)
+garden_layer.triggerRepaint()
+
+highway_layer = QgsVectorLayer(&quot;LineString?crs=EPSG:4326&quot;, &quot;Highways&quot;, &quot;memory&quot;)
+highway_provider = highway_layer.dataProvider()
+highway_provider.addAttributes([
+    QgsField(&quot;id&quot;, QVariant.Int),
+    QgsField(&quot;name&quot;, QVariant.String)
+])
+highway_layer.updateFields()
+
+highways_data = [
+    (1, &quot;Western Express Highway&quot;,  [(72.855,19.10),(72.855,19.16)]),
+    (2, &quot;Eastern Express Highway&quot;,  [(72.83,19.125),(72.88,19.125)])
+]
+
+for hid, name, coords in highways_data:
+    feat = QgsFeature()
+    points = [QgsPointXY(x, y) for x, y in coords]
+    feat.setGeometry(QgsGeometry.fromPolylineXY(points))
+    feat.setAttributes([hid, name])
+    highway_provider.addFeature(feat)
+
+highway_layer.updateExtents()
+project.addMapLayer(highway_layer)
+
+symbol = QgsLineSymbol.createSimple({
+    &#x27;color&#x27;: &#x27;220,30,30&#x27;,
+    &#x27;width&#x27;: &#x27;1.2&#x27;
+})
+highway_layer.renderer().setSymbol(symbol)
+highway_layer.triggerRepaint()
+
+railway_layer = QgsVectorLayer(&quot;LineString?crs=EPSG:4326&quot;, &quot;Railway_Tracks&quot;, &quot;memory&quot;)
+railway_provider = railway_layer.dataProvider()
+railway_provider.addAttributes([
+    QgsField(&quot;id&quot;, QVariant.Int),
+    QgsField(&quot;name&quot;, QVariant.String),
+    QgsField(&quot;line&quot;, QVariant.String)
+])
+railway_layer.updateFields()
+
+railways_data = [
+    (1, &quot;Western Line Track&quot;,  &quot;Western&quot;, [(72.840,19.10),(72.860,19.16)]),
+    (2, &quot;Harbour Line Track&quot;,  &quot;Harbour&quot;, [(72.870,19.14),(72.880,19.16)])
+]
+
+for rid, name, line, coords in railways_data:
+    feat = QgsFeature()
+    points = [QgsPointXY(x, y) for x, y in coords]
+    feat.setGeometry(QgsGeometry.fromPolylineXY(points))
+    feat.setAttributes([rid, name, line])
+    railway_provider.addFeature(feat)
+
+railway_layer.updateExtents()
+project.addMapLayer(railway_layer)
+
+symbol = QgsLineSymbol.createSimple({
+    &#x27;color&#x27;: &#x27;80,80,80&#x27;,
+    &#x27;width&#x27;: &#x27;0.8&#x27;,
+    &#x27;line_style&#x27;: &#x27;dash&#x27;
+})
+railway_layer.renderer().setSymbol(symbol)
+railway_layer.triggerRepaint()
+
+station_layer = QgsVectorLayer(&quot;Point?crs=EPSG:4326&quot;, &quot;Railway_Stations&quot;, &quot;memory&quot;)
+station_provider = station_layer.dataProvider()
+station_provider.addAttributes([
+    QgsField(&quot;id&quot;, QVariant.Int),
+    QgsField(&quot;name&quot;, QVariant.String),
+    QgsField(&quot;line&quot;, QVariant.String)
+])
+station_layer.updateFields()
+
+stations_data = [
+    (1, &quot;Andheri&quot;,     &quot;Western&quot;, 72.843, 19.115),
+    (2, &quot;Goregaon&quot;,    &quot;Western&quot;, 72.850, 19.130),
+    (3, &quot;Jogeshwari&quot;,  &quot;Western&quot;, 72.847, 19.122),
+    (4, &quot;Malad&quot;,       &quot;Western&quot;, 72.853, 19.140),
+    (5, &quot;Kandivali&quot;,   &quot;Harbour&quot;, 72.875, 19.150)
+]
+
+for sid, name, line, x, y in stations_data:
+    feat = QgsFeature()
+    feat.setGeometry(QgsGeometry.fromPointXY(QgsPointXY(x, y)))
+    feat.setAttributes([sid, name, line])
+    station_provider.addFeature(feat)
+
+station_layer.updateExtents()
+project.addMapLayer(station_layer)
+
+symbol = QgsMarkerSymbol.createSimple({
+    &#x27;name&#x27;: &#x27;square&#x27;,
+    &#x27;color&#x27;: &#x27;30,30,30&#x27;,
+    &#x27;size&#x27;: &#x27;3&#x27;
+})
+station_layer.renderer().setSymbol(symbol)
+station_layer.triggerRepaint()
+
+restaurant_layer = QgsVectorLayer(&quot;Point?crs=EPSG:4326&quot;, &quot;Restaurants&quot;, &quot;memory&quot;)
+restaurant_provider = restaurant_layer.dataProvider()
+restaurant_provider.addAttributes([
+    QgsField(&quot;id&quot;, QVariant.Int),
+    QgsField(&quot;name&quot;, QVariant.String)
+])
+restaurant_layer.updateFields()
+
+restaurants_data = [
+    (1, &quot;Taj Restaurant&quot;,  72.840, 19.140),
+    (2, &quot;Mumbai Darbar&quot;,   72.841, 19.141),
+    (3, &quot;Garden Cafe&quot;,     72.860, 19.140),
+    (4, &quot;Spice Kitchen&quot;,   72.850, 19.115),
+    (5, &quot;Food Plaza&quot;,      72.870, 19.155)
+]
+
+for rid, name, x, y in restaurants_data:
+    feat = QgsFeature()
+    feat.setGeometry(QgsGeometry.fromPointXY(QgsPointXY(x, y)))
+    feat.setAttributes([rid, name])
+    restaurant_provider.addFeature(feat)
+
+restaurant_layer.updateExtents()
+project.addMapLayer(restaurant_layer)
+
+symbol = QgsMarkerSymbol.createSimple({
+    &#x27;name&#x27;: &#x27;star&#x27;,
+    &#x27;color&#x27;: &#x27;255,165,0&#x27;,
+    &#x27;size&#x27;: &#x27;4.5&#x27;
+})
+restaurant_layer.renderer().setSymbol(symbol)
+restaurant_layer.triggerRepaint()
+
+hospital_layer = QgsVectorLayer(&quot;Point?crs=EPSG:4326&quot;, &quot;Hospitals&quot;, &quot;memory&quot;)
+hospital_provider = hospital_layer.dataProvider()
+hospital_provider.addAttributes([
+    QgsField(&quot;id&quot;, QVariant.Int),
+    QgsField(&quot;name&quot;, QVariant.String)
+])
+hospital_layer.updateFields()
+
+hospitals_data = [
+    (1, &quot;City Hospital&quot;,     72.845, 19.135),
+    (2, &quot;General Hospital&quot;,  72.865, 19.148),
+    (3, &quot;Apollo Hospital&quot;,   72.840, 19.115),
+    (4, &quot;Fortis Hospital&quot;,   72.875, 19.112),
+    (5, &quot;Nanavati Hospital&quot;, 72.850, 19.155)
+]
+
+for hid, name, x, y in hospitals_data:
+    feat = QgsFeature()
+    feat.setGeometry(QgsGeometry.fromPointXY(QgsPointXY(x, y)))
+    feat.setAttributes([hid, name])
+    hospital_provider.addFeature(feat)
+
+hospital_layer.updateExtents()
+project.addMapLayer(hospital_layer)
+
+symbol = QgsMarkerSymbol.createSimple({
+    &#x27;name&#x27;: &#x27;cross&#x27;,
+    &#x27;color&#x27;: &#x27;220,0,0&#x27;,
+    &#x27;size&#x27;: &#x27;4&#x27;
+})
+hospital_layer.renderer().setSymbol(symbol)
+hospital_layer.triggerRepaint()
+
+building_layer = QgsVectorLayer(&quot;Polygon?crs=EPSG:4326&quot;, &quot;Buildings&quot;, &quot;memory&quot;)
+building_provider = building_layer.dataProvider()
+building_provider.addAttributes([
+    QgsField(&quot;id&quot;, QVariant.Int),
+    QgsField(&quot;name&quot;, QVariant.String)
+])
+building_layer.updateFields()
+
+buildings_data = [
+    (1,  &quot;Sunrise Apartments&quot;,    [(72.845,19.150),(72.847,19.150),(72.847,19.152),(72.845,19.152),(72.845,19.150)]),
+    (2,  &quot;Green Valley Complex&quot;,  [(72.835,19.145),(72.837,19.145),(72.837,19.147),(72.835,19.147),(72.835,19.145)]),
+    (3,  &quot;Tech Park&quot;,            [(72.860,19.150),(72.863,19.150),(72.863,19.153),(72.860,19.153),(72.860,19.150)]),
+    (4,  &quot;Business Center&quot;,      [(72.870,19.145),(72.872,19.145),(72.872,19.147),(72.870,19.147),(72.870,19.145)]),
+    (5,  &quot;Royal Residency&quot;,      [(72.835,19.132),(72.837,19.132),(72.837,19.134),(72.835,19.134),(72.835,19.132)]),
+    (6,  &quot;Silver Heights&quot;,       [(72.860,19.115),(72.862,19.115),(72.862,19.117),(72.860,19.117),(72.860,19.115)]),
+    (7,  &quot;Golden Plaza&quot;,         [(72.845,19.103),(72.847,19.103),(72.847,19.105),(72.845,19.105),(72.845,19.103)]),
+    (8,  &quot;Diamond Tower&quot;,        [(72.870,19.103),(72.872,19.103),(72.872,19.105),(72.870,19.105),(72.870,19.103)]),
+    (9,  &quot;Pearl Compound&quot;,       [(72.835,19.115),(72.837,19.115),(72.837,19.117),(72.835,19.117),(72.835,19.115)]),
+    (10, &quot;IT Business Park&quot;,     [(72.875,19.135),(72.878,19.135),(72.878,19.138),(72.875,19.138),(72.875,19.135)])
+]
+
+for bid, name, coords in buildings_data:
+    feat = QgsFeature()
+    points = [QgsPointXY(x, y) for x, y in coords]
+    feat.setGeometry(QgsGeometry.fromPolygonXY([points]))
+    feat.setAttributes([bid, name])
+    building_provider.addFeature(feat)
+
+building_layer.updateExtents()
+project.addMapLayer(building_layer)
+
+symbol = QgsFillSymbol.createSimple({
+    &#x27;color&#x27;: &#x27;210,170,120,160&#x27;,
+    &#x27;outline_color&#x27;: &#x27;120,70,20&#x27;,
+    &#x27;outline_width&#x27;: &#x27;0.3&#x27;
+})
+building_layer.renderer().setSymbol(symbol)
+building_layer.triggerRepaint()
+
+all_layers = [
+    area_layer, garden_layer, highway_layer, railway_layer,
+    station_layer, restaurant_layer, hospital_layer, building_layer
+]
+
+for layer in all_layers:
+    settings = QgsPalLayerSettings()
+    settings.fieldName = &quot;name&quot;
+    settings.enabled = True
+    text_format = QgsTextFormat()
+    text_format.setSize(8)
+    buffer = QgsTextBufferSettings()
+    buffer.setEnabled(True)
+    buffer.setSize(1)
+    buffer.setColor(QColor(255, 255, 255))
+    text_format.setBuffer(buffer)
+    settings.setFormat(text_format)
+    labeling = QgsVectorLayerSimpleLabeling(settings)
+    layer.setLabelsEnabled(True)
+    layer.setLabeling(labeling)
+    layer.triggerRepaint()
+
+canvas = iface.mapCanvas()
+canvas.setExtent(area_layer.extent())
+canvas.refresh()
+
+print(&quot;=&quot; * 65)
+print(&quot;  Q1: Residential Area Map - CREATED SUCCESSFULLY!&quot;)
+print(&quot;=&quot; * 65)
+print(f&quot;  1. Areas            : {area_layer.featureCount()} features (Polygon)&quot;)
+print(f&quot;  2. Gardens           : {garden_layer.featureCount()} features (Polygon)&quot;)
+print(f&quot;  3. Highways          : {highway_layer.featureCount()} features (Line)&quot;)
+print(f&quot;  4. Railway Tracks    : {railway_layer.featureCount()} features (Line)&quot;)
+print(f&quot;  5. Railway Stations  : {station_layer.featureCount()} features (Point)&quot;)
+print(f&quot;  6. Restaurants       : {restaurant_layer.featureCount()} features (Point)&quot;)
+print(f&quot;     -&gt; 3 restaurants are inside gardens (Joggers Park, Five Gardens)&quot;)
+print(f&quot;  7. Hospitals         : {hospital_layer.featureCount()} features (Point)&quot;)
+print(f&quot;  8. Buildings         : {building_layer.featureCount()} features (Polygon)&quot;)
+print(&quot;=&quot; * 65)
+print(&quot;  Location: Mumbai (Andheri-Goregaon area)&quot;)
+print(&quot;  CRS: EPSG:4326 (WGS 84)&quot;)
+print(&quot;=&quot; * 65)
+</pre>
+</body>
+</html>
