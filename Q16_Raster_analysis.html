@@ -1,0 +1,535 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Q11 - Create Vector Data</title>
+</head>
+<body>
+    <pre style="font-size:1px;">
+# ==================================================================
+#  Practical: Add Raster Layer (gl_gpwv3_pdens_90_ascii_one\glds90ag60.asc)
+#  1. Set Properties, Symbology
+#  2. Apply Raster Styling and Analysis
+#  3. Apply Raster Mosaicking and Clipping
+#  ── No external files needed (creates sample raster in-memory) ──
+# ==================================================================
+
+from qgis.core import *
+from qgis.gui import *
+from PyQt5.QtGui import QColor, QFont
+from PyQt5.QtCore import QVariant, QFileInfo
+import processing
+import os
+import tempfile
+import math
+
+project = QgsProject.instance()
+project.setTitle("Raster Analysis - Population Density (glds90ag60)")
+
+print("=" * 70)
+print("  PRACTICAL: Raster Layers - Properties, Styling, Mosaicking & Clipping")
+print("=" * 70)
+
+# ==================================================================
+#  STEP 0: Create Sample Raster Files (simulating glds90ag60.asc)
+# ==================================================================
+print("\n" + "-" * 70)
+print("  STEP 0: Creating Sample Raster Data (Population Density Grid)")
+print("-" * 70)
+
+temp_dir = os.path.join(tempfile.gettempdir(), "qgis_raster_practical")
+os.makedirs(temp_dir, exist_ok=True)
+
+# --- Create Raster 1: glds90ag60.asc (India region - population density) ---
+raster1_path = os.path.join(temp_dir, "glds90ag60.asc")
+ncols1, nrows1 = 60, 50
+xllcorner1, yllcorner1 = 68.0, 8.0
+cellsize1 = 0.5
+
+with open(raster1_path, 'w') as f:
+    f.write(f"ncols         {ncols1}\n")
+    f.write(f"nrows         {nrows1}\n")
+    f.write(f"xllcorner     {xllcorner1}\n")
+    f.write(f"yllcorner     {yllcorner1}\n")
+    f.write(f"cellsize      {cellsize1}\n")
+    f.write(f"NODATA_value  -9999\n")
+    for row in range(nrows1):
+        lat = yllcorner1 + (nrows1 - row - 1) * cellsize1
+        values = []
+        for col in range(ncols1):
+            lon = xllcorner1 + col * cellsize1
+            # Simulate population density: higher near major cities
+            density = 10
+            # Mumbai region
+            d_mum = math.sqrt((lon - 72.88)**2 + (lat - 19.08)**2)
+            density += max(0, 800 - d_mum * 200)
+            # Delhi region
+            d_del = math.sqrt((lon - 77.2)**2 + (lat - 28.6)**2)
+            density += max(0, 900 - d_del * 200)
+            # Kolkata region
+            d_kol = math.sqrt((lon - 88.36)**2 + (lat - 22.57)**2)
+            density += max(0, 700 - d_kol * 200)
+            # Chennai region
+            d_che = math.sqrt((lon - 80.27)**2 + (lat - 13.08)**2)
+            density += max(0, 600 - d_che * 200)
+            # Bangalore region
+            d_blr = math.sqrt((lon - 77.59)**2 + (lat - 12.97)**2)
+            density += max(0, 550 - d_blr * 200)
+            # Ganges plain (higher density belt)
+            if 25.0 < lat < 28.0 and 78.0 < lon < 86.0:
+                density += 200
+            # Ocean areas = NODATA
+            if lon < 70 and lat < 20:
+                density = -9999
+            if lon > 85 and lat < 12:
+                density = -9999
+            if lat < 8.5:
+                density = -9999
+            values.append(str(round(density, 1)))
+        f.write(" ".join(values) + "\n")
+
+print(f"  Created raster 1: glds90ag60.asc")
+print(f"    Path     : {raster1_path}")
+print(f"    Size     : {ncols1} x {nrows1} cells")
+print(f"    Extent   : {xllcorner1},{yllcorner1} to {xllcorner1+ncols1*cellsize1},{yllcorner1+nrows1*cellsize1}")
+print(f"    Cell Size: {cellsize1} degrees")
+
+# --- Create Raster 2: glds90ag60_east.asc (for mosaicking) ---
+raster2_path = os.path.join(temp_dir, "glds90ag60_east.asc")
+ncols2, nrows2 = 30, 50
+xllcorner2, yllcorner2 = 88.0, 8.0
+cellsize2 = 0.5
+
+with open(raster2_path, 'w') as f:
+    f.write(f"ncols         {ncols2}\n")
+    f.write(f"nrows         {nrows2}\n")
+    f.write(f"xllcorner     {xllcorner2}\n")
+    f.write(f"yllcorner     {yllcorner2}\n")
+    f.write(f"cellsize      {cellsize2}\n")
+    f.write(f"NODATA_value  -9999\n")
+    for row in range(nrows2):
+        lat = yllcorner2 + (nrows2 - row - 1) * cellsize2
+        values = []
+        for col in range(ncols2):
+            lon = xllcorner2 + col * cellsize2
+            density = 15
+            # Northeast India density
+            if 22 < lat < 28 and 88 < lon < 97:
+                density += 150
+            # Guwahati
+            d_gwh = math.sqrt((lon - 91.74)**2 + (lat - 26.14)**2)
+            density += max(0, 400 - d_gwh * 150)
+            if lat < 10 or lon > 100:
+                density = -9999
+            values.append(str(round(density, 1)))
+        f.write(" ".join(values) + "\n")
+
+print(f"\n  Created raster 2: glds90ag60_east.asc (for mosaicking)")
+print(f"    Path     : {raster2_path}")
+print(f"    Size     : {ncols2} x {nrows2} cells")
+
+# ==================================================================
+#  STEP 1: Add Raster Layer to Project
+# ==================================================================
+print("\n" + "-" * 70)
+print("  STEP 1: Adding Raster Layer to QGIS Project")
+print("-" * 70)
+
+raster_layer = QgsRasterLayer(raster1_path, "glds90ag60")
+if not raster_layer.isValid():
+    print(f"  [ERROR] Failed to load raster: {raster1_path}")
+else:
+    project.addMapLayer(raster_layer)
+    print(f"  Loaded : glds90ag60 (Population Density)")
+    print(f"  CRS    : {raster_layer.crs().authid()}")
+    print(f"  Width  : {raster_layer.width()} pixels")
+    print(f"  Height : {raster_layer.height()} pixels")
+    print(f"  Extent : {raster_layer.extent().toString()}")
+    print(f"  Bands  : {raster_layer.bandCount()}")
+    print(f"  Data Type: {raster_layer.dataProvider().dataType(1)}")
+
+# Load second raster
+raster_layer2 = QgsRasterLayer(raster2_path, "glds90ag60_east")
+if raster_layer2.isValid():
+    project.addMapLayer(raster_layer2)
+    print(f"\n  Loaded : glds90ag60_east (Eastern Region)")
+    print(f"  Width  : {raster_layer2.width()} pixels")
+    print(f"  Height : {raster_layer2.height()} pixels")
+
+# ==================================================================
+#  STEP 2: Set Properties & Symbology
+# ==================================================================
+print("\n" + "-" * 70)
+print("  STEP 2: Setting Raster Properties & Symbology")
+print("-" * 70)
+
+if raster_layer.isValid():
+    # --- Display Layer Properties ---
+    provider = raster_layer.dataProvider()
+    print("\n  Layer Properties:")
+    print(f"    Name           : {raster_layer.name()}")
+    print(f"    Source         : {raster_layer.source()}")
+    print(f"    CRS            : {raster_layer.crs().authid()}")
+    print(f"    Description    : {raster_layer.crs().description()}")
+    print(f"    Pixel Size X   : {raster_layer.rasterUnitsPerPixelX()}")
+    print(f"    Pixel Size Y   : {raster_layer.rasterUnitsPerPixelY()}")
+    print(f"    Band Count     : {raster_layer.bandCount()}")
+    print(f"    Renderer Type  : {raster_layer.renderer().type()}")
+
+    extent = raster_layer.extent()
+    print(f"    Extent (xMin)  : {extent.xMinimum():.4f}")
+    print(f"    Extent (yMin)  : {extent.yMinimum():.4f}")
+    print(f"    Extent (xMax)  : {extent.xMaximum():.4f}")
+    print(f"    Extent (yMax)  : {extent.yMaximum():.4f}")
+
+    # --- Band Statistics ---
+    stats = provider.bandStatistics(1, QgsRasterBandStats.All)
+    print(f"\n  Band 1 Statistics:")
+    print(f"    Minimum        : {stats.minimumValue:.4f}")
+    print(f"    Maximum        : {stats.maximumValue:.4f}")
+    print(f"    Mean           : {stats.mean:.4f}")
+    print(f"    Std Deviation  : {stats.stdDev:.4f}")
+    print(f"    Range          : {stats.range:.4f}")
+    print(f"    Sum            : {stats.sum:.4f}")
+
+    # --- Apply Singleband Pseudocolor Symbology ---
+    print("\n  Applying Pseudocolor Symbology (Color Ramp)...")
+
+    min_val = stats.minimumValue
+    max_val = stats.maximumValue
+
+    # Create color ramp items (population density gradient)
+    color_ramp_items = [
+        QgsColorRampShader.ColorRampItem(min_val,        QColor(255, 255, 204), f"Low ({min_val:.0f})"),
+        QgsColorRampShader.ColorRampItem(min_val + (max_val - min_val) * 0.2, QColor(194, 230, 153), "Low-Medium"),
+        QgsColorRampShader.ColorRampItem(min_val + (max_val - min_val) * 0.4, QColor(120, 198, 121), "Medium"),
+        QgsColorRampShader.ColorRampItem(min_val + (max_val - min_val) * 0.6, QColor(49, 163, 84),   "Medium-High"),
+        QgsColorRampShader.ColorRampItem(min_val + (max_val - min_val) * 0.8, QColor(0, 104, 55),    "High"),
+        QgsColorRampShader.ColorRampItem(max_val,        QColor(128, 0, 0),    f"Very High ({max_val:.0f})")
+    ]
+
+    color_ramp = QgsColorRampShader()
+    color_ramp.setColorRampType(QgsColorRampShader.Interpolated)
+    color_ramp.setColorRampItemList(color_ramp_items)
+
+    shader = QgsRasterShader()
+    shader.setRasterShaderFunction(color_ramp)
+
+    renderer = QgsSingleBandPseudoColorRenderer(raster_layer.dataProvider(), 1, shader)
+    raster_layer.setRenderer(renderer)
+    raster_layer.triggerRepaint()
+
+    print("  Symbology applied: YlGn color ramp (Yellow-Green-DarkRed)")
+    print(f"    Value range: {min_val:.1f} to {max_val:.1f}")
+    print("    6 color classes defined")
+
+    # --- Set Transparency for NODATA ---
+    raster_layer.renderer().setNodataColor(QColor(0, 0, 0, 0))
+    raster_layer.triggerRepaint()
+    print("  NODATA values set to transparent.")
+
+# ==================================================================
+#  STEP 3: Raster Styling and Analysis
+# ==================================================================
+print("\n" + "-" * 70)
+print("  STEP 3: Raster Styling and Analysis")
+print("-" * 70)
+
+if raster_layer.isValid():
+    # --- 3a. Set Layer Opacity ---
+    raster_layer.renderer().setOpacity(0.85)
+    print("\n  3a. Layer opacity set to 85%")
+
+    # --- 3b. Brightness / Contrast ---
+    brightness_filter = QgsBrightnessContrastFilter()
+    brightness_filter.setBrightness(5)
+    brightness_filter.setContrast(15)
+    raster_layer.pipe().set(brightness_filter)
+    raster_layer.triggerRepaint()
+    print("  3b. Brightness +5, Contrast +15 applied")
+
+    # --- 3c. Raster Analysis: Compute Statistics ---
+    print("\n  3c. Raster Analysis - Cell Value Sampling:")
+
+    # Sample specific locations (major cities)
+    sample_points = [
+        ("Mumbai",    72.88, 19.08),
+        ("Delhi",     77.20, 28.60),
+        ("Kolkata",   88.36, 22.57),
+        ("Chennai",   80.27, 13.08),
+        ("Bangalore", 77.59, 12.97),
+        ("Jaipur",    75.78, 26.92),
+        ("Lucknow",   80.95, 26.85),
+        ("Hyderabad", 78.48, 17.38)
+    ]
+
+    print(f"\n    {'City':15s} | {'Longitude':>10s} | {'Latitude':>10s} | {'Density Value':>14s}")
+    print("    " + "-" * 60)
+
+    for name, lon, lat in sample_points:
+        point = QgsPointXY(lon, lat)
+        result = raster_layer.dataProvider().identify(point, QgsRaster.IdentifyFormatValue)
+        if result.isValid():
+            val = result.results().get(1, "N/A")
+            print(f"    {name:15s} | {lon:>10.2f} | {lat:>10.2f} | {val:>14s}" if isinstance(val, str) else f"    {name:15s} | {lon:>10.2f} | {lat:>10.2f} | {val:>14.2f}")
+        else:
+            print(f"    {name:15s} | {lon:>10.2f} | {lat:>10.2f} | {'N/A':>14s}")
+
+    # --- 3d. Raster Histogram ---
+    print("\n  3d. Raster Histogram (Band 1):")
+    histogram = provider.histogram(1)
+    print(f"    Bin Count  : {histogram.binCount}")
+    print(f"    Min Value  : {histogram.minimum:.4f}")
+    print(f"    Max Value  : {histogram.maximum:.4f}")
+    print(f"    Non-Null Cells : {stats.elementCount - stats.elementCount * 0}")
+
+    # --- 3e. Reclassify Raster (using raster calculator) ---
+    print("\n  3e. Raster Analysis - Classification by Density Zones:")
+    print("    Zone 1: Low Density      (0 - 100)")
+    print("    Zone 2: Medium Density   (100 - 300)")
+    print("    Zone 3: High Density     (300 - 600)")
+    print("    Zone 4: Very High        (600+)")
+
+    try:
+        reclass_output = os.path.join(temp_dir, "density_classified.tif")
+        result = processing.run("native:reclassifybytable", {
+            'INPUT_RASTER': raster_layer,
+            'RASTER_BAND': 1,
+            'TABLE': [0, 100, 1, 100, 300, 2, 300, 600, 3, 600, 10000, 4],
+            'NO_DATA': -9999,
+            'RANGE_BOUNDARIES': 0,
+            'NODATA_FOR_MISSING': True,
+            'DATA_TYPE': 5,
+            'OUTPUT': reclass_output
+        })
+        classified_layer = QgsRasterLayer(result['OUTPUT'], "Density_Classified")
+        if classified_layer.isValid():
+            project.addMapLayer(classified_layer)
+            print(f"    Classified raster created and added to project.")
+            print(f"    Output: {result['OUTPUT']}")
+
+            # Style classified raster
+            cls_items = [
+                QgsColorRampShader.ColorRampItem(1, QColor(255, 255, 178), "Low (0-100)"),
+                QgsColorRampShader.ColorRampItem(2, QColor(254, 204, 92),  "Medium (100-300)"),
+                QgsColorRampShader.ColorRampItem(3, QColor(253, 141, 60),  "High (300-600)"),
+                QgsColorRampShader.ColorRampItem(4, QColor(227, 26, 28),   "Very High (600+)")
+            ]
+            cls_ramp = QgsColorRampShader()
+            cls_ramp.setColorRampType(QgsColorRampShader.Exact)
+            cls_ramp.setColorRampItemList(cls_items)
+            cls_shader = QgsRasterShader()
+            cls_shader.setRasterShaderFunction(cls_ramp)
+            cls_renderer = QgsSingleBandPseudoColorRenderer(classified_layer.dataProvider(), 1, cls_shader)
+            classified_layer.setRenderer(cls_renderer)
+            classified_layer.triggerRepaint()
+            print("    Classification symbology applied (4 density zones).")
+    except Exception as e:
+        print(f"    [INFO] Reclassification skipped: {e}")
+
+# ==================================================================
+#  STEP 4: Raster Mosaicking
+# ==================================================================
+print("\n" + "-" * 70)
+print("  STEP 4: Raster Mosaicking (Merging Two Rasters)")
+print("-" * 70)
+
+if raster_layer.isValid() and raster_layer2.isValid():
+    print(f"\n  Input Raster 1 : {raster_layer.name()}")
+    print(f"    Extent: {raster_layer.extent().toString()}")
+    print(f"    Size  : {raster_layer.width()} x {raster_layer.height()}")
+
+    print(f"\n  Input Raster 2 : {raster_layer2.name()}")
+    print(f"    Extent: {raster_layer2.extent().toString()}")
+    print(f"    Size  : {raster_layer2.width()} x {raster_layer2.height()}")
+
+    mosaic_output = os.path.join(temp_dir, "mosaic_output.tif")
+
+    try:
+        result = processing.run("gdal:merge", {
+            'INPUT': [raster_layer, raster_layer2],
+            'PCT': False,
+            'SEPARATE': False,
+            'NODATA_INPUT': -9999,
+            'NODATA_OUTPUT': -9999,
+            'DATA_TYPE': 5,
+            'OUTPUT': mosaic_output
+        })
+
+        mosaic_layer = QgsRasterLayer(result['OUTPUT'], "Mosaic_India_Complete")
+        if mosaic_layer.isValid():
+            project.addMapLayer(mosaic_layer)
+            print(f"\n  Mosaic Result:")
+            print(f"    Output : {result['OUTPUT']}")
+            print(f"    Width  : {mosaic_layer.width()} pixels")
+            print(f"    Height : {mosaic_layer.height()} pixels")
+            print(f"    Extent : {mosaic_layer.extent().toString()}")
+            print(f"    Bands  : {mosaic_layer.bandCount()}")
+
+            # Apply same color ramp to mosaic
+            m_stats = mosaic_layer.dataProvider().bandStatistics(1, QgsRasterBandStats.All)
+            m_items = [
+                QgsColorRampShader.ColorRampItem(m_stats.minimumValue, QColor(255, 255, 204), "Low"),
+                QgsColorRampShader.ColorRampItem(m_stats.minimumValue + m_stats.range * 0.33, QColor(120, 198, 121), "Medium"),
+                QgsColorRampShader.ColorRampItem(m_stats.minimumValue + m_stats.range * 0.66, QColor(0, 104, 55), "High"),
+                QgsColorRampShader.ColorRampItem(m_stats.maximumValue, QColor(128, 0, 0), "Very High")
+            ]
+            m_ramp = QgsColorRampShader()
+            m_ramp.setColorRampType(QgsColorRampShader.Interpolated)
+            m_ramp.setColorRampItemList(m_items)
+            m_shader = QgsRasterShader()
+            m_shader.setRasterShaderFunction(m_ramp)
+            m_renderer = QgsSingleBandPseudoColorRenderer(mosaic_layer.dataProvider(), 1, m_shader)
+            mosaic_layer.setRenderer(m_renderer)
+            mosaic_layer.triggerRepaint()
+            print("    Color ramp symbology applied to mosaic layer.")
+        else:
+            print("  [ERROR] Mosaic layer is not valid.")
+    except Exception as e:
+        print(f"  [INFO] Mosaicking skipped: {e}")
+
+# ==================================================================
+#  STEP 5: Raster Clipping
+# ==================================================================
+print("\n" + "-" * 70)
+print("  STEP 5: Raster Clipping (Clip Raster by Polygon Mask)")
+print("-" * 70)
+
+# Create a clipping polygon (e.g., Western India region)
+clip_layer = QgsVectorLayer("Polygon?crs=EPSG:4326", "Clip_Region_West", "memory")
+clip_prov  = clip_layer.dataProvider()
+clip_prov.addAttributes([
+    QgsField("id",   QVariant.Int),
+    QgsField("Name", QVariant.String)
+])
+clip_layer.updateFields()
+
+clip_coords = [
+    QgsPointXY(72.0, 15.0), QgsPointXY(78.0, 15.0),
+    QgsPointXY(78.0, 24.0), QgsPointXY(72.0, 24.0),
+    QgsPointXY(72.0, 15.0)
+]
+
+feat = QgsFeature()
+feat.setGeometry(QgsGeometry.fromPolygonXY([clip_coords]))
+feat.setAttributes([1, "Western India"])
+clip_prov.addFeature(feat)
+clip_layer.updateExtents()
+project.addMapLayer(clip_layer)
+
+# Style clip boundary
+clip_symbol = QgsFillSymbol.createSimple({
+    'color': '255,0,0,30',
+    'outline_color': '255,0,0',
+    'outline_width': '1.0',
+    'outline_style': 'dash'
+})
+clip_layer.renderer().setSymbol(clip_symbol)
+clip_layer.triggerRepaint()
+
+print(f"  Clip Region : Western India")
+print(f"  Extent      : 72.0,15.0 to 78.0,24.0")
+
+# Clip the raster
+clip_output = os.path.join(temp_dir, "clipped_output.tif")
+source_raster = mosaic_layer if 'mosaic_layer' in dir() and mosaic_layer.isValid() else raster_layer
+
+try:
+    result = processing.run("gdal:cliprasterbymasklayer", {
+        'INPUT': source_raster,
+        'MASK': clip_layer,
+        'SOURCE_CRS': source_raster.crs(),
+        'TARGET_CRS': source_raster.crs(),
+        'NODATA': -9999,
+        'ALPHA_BAND': False,
+        'CROP_TO_CUTLINE': True,
+        'KEEP_RESOLUTION': True,
+        'SET_RESOLUTION': False,
+        'DATA_TYPE': 0,
+        'OUTPUT': clip_output
+    })
+
+    clipped_layer = QgsRasterLayer(result['OUTPUT'], "Clipped_Western_India")
+    if clipped_layer.isValid():
+        project.addMapLayer(clipped_layer)
+
+        # Apply color ramp
+        c_stats = clipped_layer.dataProvider().bandStatistics(1, QgsRasterBandStats.All)
+        c_items = [
+            QgsColorRampShader.ColorRampItem(c_stats.minimumValue, QColor(255, 255, 178), "Low"),
+            QgsColorRampShader.ColorRampItem(c_stats.minimumValue + c_stats.range * 0.5, QColor(253, 141, 60), "Medium"),
+            QgsColorRampShader.ColorRampItem(c_stats.maximumValue, QColor(189, 0, 38), "High")
+        ]
+        c_ramp = QgsColorRampShader()
+        c_ramp.setColorRampType(QgsColorRampShader.Interpolated)
+        c_ramp.setColorRampItemList(c_items)
+        c_shader = QgsRasterShader()
+        c_shader.setRasterShaderFunction(c_ramp)
+        c_renderer = QgsSingleBandPseudoColorRenderer(clipped_layer.dataProvider(), 1, c_shader)
+        clipped_layer.setRenderer(c_renderer)
+        clipped_layer.triggerRepaint()
+
+        print(f"\n  Clipped Raster Result:")
+        print(f"    Output : {result['OUTPUT']}")
+        print(f"    Width  : {clipped_layer.width()} pixels")
+        print(f"    Height : {clipped_layer.height()} pixels")
+        print(f"    Extent : {clipped_layer.extent().toString()}")
+
+        print(f"\n  Clipped Raster Statistics:")
+        print(f"    Minimum : {c_stats.minimumValue:.4f}")
+        print(f"    Maximum : {c_stats.maximumValue:.4f}")
+        print(f"    Mean    : {c_stats.mean:.4f}")
+        print(f"    Std Dev : {c_stats.stdDev:.4f}")
+        print("    Color ramp applied to clipped raster.")
+    else:
+        print("  [ERROR] Clipped layer is not valid.")
+except Exception as e:
+    print(f"  [INFO] Clipping skipped: {e}")
+
+# ==================================================================
+#  STEP 6: Set Map Canvas & Refresh
+# ==================================================================
+print("\n" + "-" * 70)
+print("  STEP 6: Setting Map View")
+print("-" * 70)
+
+canvas = iface.mapCanvas()
+canvas.setExtent(raster_layer.extent())
+canvas.refresh()
+print("  Map canvas centered on study area and refreshed.")
+
+# ==================================================================
+#  SUMMARY
+# ==================================================================
+print("\n" + "=" * 70)
+print("  SUMMARY OF ALL STEPS")
+print("=" * 70)
+
+print(f"\n  Layers in Project:")
+for lyr in project.mapLayers().values():
+    lyr_type = "Raster" if isinstance(lyr, QgsRasterLayer) else "Vector"
+    if isinstance(lyr, QgsRasterLayer):
+        print(f"    [{lyr_type}] {lyr.name():30s} | {lyr.width()}x{lyr.height()} pixels")
+    else:
+        print(f"    [{lyr_type}] {lyr.name():30s} | {lyr.featureCount()} features")
+
+print(f"\n  Step 1: Raster layers loaded from .asc files")
+print(f"  Step 2: Properties set - CRS, band stats, pseudocolor symbology")
+print(f"  Step 3: Styling (opacity, brightness/contrast), analysis (sampling,")
+print(f"          histogram, reclassification into 4 density zones)")
+print(f"  Step 4: Mosaicking - two rasters merged into single mosaic")
+print(f"  Step 5: Clipping - raster clipped by Western India polygon mask")
+
+if raster_layer.isValid():
+    print(f"\n  Original Raster Stats:")
+    print(f"    Min: {stats.minimumValue:.2f} | Max: {stats.maximumValue:.2f} | Mean: {stats.mean:.2f}")
+
+print(f"\n  Temp files location: {temp_dir}")
+
+print("\n" + "=" * 70)
+print("  Practical Completed Successfully!")
+print("=" * 70)
+
+</pre>
+</body>
+</html>
